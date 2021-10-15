@@ -6,35 +6,36 @@
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 [![Downloads](https://pepy.tech/badge/dag-factory)](https://pepy.tech/project/dag-factory)
 
-*dag-factory* is a library for dynamically generating [Apache Airflow](https://github.com/apache/incubator-airflow) DAGs from YAML configuration files.
+_dag-factory_ is a library for dynamically generating [Apache Airflow](https://github.com/apache/incubator-airflow) DAGs from YAML configuration files.
+
 - [Installation](#installation)
 - [Usage](#usage)
 - [Benefits](#benefits)
 - [Contributing](#contributing)
-  
+
 ## Installation
 
-To install *dag-factory* run `pip install dag-factory`. It requires Python 3.6.0+ and Apache Airflow 1.10+.
+To install _dag-factory_ run `pip install dag-factory`. It requires Python 3.6.0+ and Apache Airflow 1.10+.
 
 ## Usage
 
-After installing *dag-factory* in your Airflow environment, there are two steps to creating DAGs. First, we need to create a YAML configuration file. For example:
+After installing _dag-factory_ in your Airflow environment, there are two steps to creating DAGs. First, we need to create a YAML configuration file. For example:
 
 ```yaml
 example_dag1:
   default_args:
-    owner: 'example_owner'
-    start_date: 2018-01-01  # or '2 days'
+    owner: "example_owner"
+    start_date: 2018-01-01 # or '2 days'
     end_date: 2018-01-05
     retries: 1
     retry_delay_sec: 300
-  schedule_interval: '0 3 * * *'
+  schedule_interval: "0 3 * * *"
   concurrency: 1
   max_active_runs: 1
   dagrun_timeout_sec: 60
-  default_view: 'tree'  # or 'graph', 'duration', 'gantt', 'landing_times'
-  orientation: 'LR'  # or 'TB', 'RL', 'BT'
-  description: 'this is an example dag!'
+  default_view: "tree" # or 'graph', 'duration', 'gantt', 'landing_times'
+  orientation: "LR" # or 'TB', 'RL', 'BT'
+  description: "this is an example dag!"
   on_success_callback_name: print_hello
   on_success_callback_file: /usr/local/airflow/dags/print_hello.py
   on_failure_callback_name: print_hello
@@ -42,14 +43,14 @@ example_dag1:
   tasks:
     task_1:
       operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 1'
+      bash_command: "echo 1"
     task_2:
       operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 2'
+      bash_command: "echo 2"
       dependencies: [task_1]
     task_3:
       operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 3'
+      bash_command: "echo 3"
       dependencies: [task_1]
 ```
 
@@ -71,11 +72,20 @@ And this DAG will be generated and ready to run in Airflow!
 
 ## Benefits
 
-* Construct DAGs without knowing Python
-* Construct DAGs without learning Airflow primitives
-* Avoid duplicative code
-* Everyone loves YAML! ;)
+- Construct DAGs without knowing Python
+- Construct DAGs without learning Airflow primitives
+- Avoid duplicative code
+- Everyone loves YAML! ;)
 
 ## Contributing
 
 Contributions are welcome! Just submit a Pull Request or Github Issue.
+
+### Run docker image in dev mode
+
+```bash
+docker build -t dag-factory .
+docker run -d -p "8080:8080" -v "$(pwd):/app" dag-factory
+```
+
+Navigate to https://localhost:8080 and login using credentials admin/admin.
