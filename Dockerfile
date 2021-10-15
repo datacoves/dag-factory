@@ -34,9 +34,12 @@ RUN set -ex \
     /usr/share/doc-base
 
 RUN pip install apache-airflow==${AIRFLOW_VERSION}
-ADD . /
+RUN mkdir -p /root/airflow/dags
+
+ADD . /app
+ADD examples/example_basic.py /root/airflow/dags/example_basic.py
+
+WORKDIR /app
 RUN pip install -e .
 
-RUN chmod +x /scripts/entrypoint.sh
-
-ENTRYPOINT ["/scripts/entrypoint.sh"]
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]

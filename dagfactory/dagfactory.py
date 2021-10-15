@@ -25,6 +25,7 @@ class DagFactory:
     def __init__(
         self, config_filepath: Optional[str] = None, config: Optional[dict] = None
     ) -> None:
+        raise Exception("saraza")
         assert bool(config_filepath) ^ bool(
             config
         ), "Either `config_filepath` or `config` should be provided"
