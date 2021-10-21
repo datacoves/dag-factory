@@ -3,6 +3,7 @@ from datetime import timedelta, datetime
 from typing import Any, Callable, Dict, List, Union
 
 import os
+import importlib
 
 from airflow import DAG, configuration
 from airflow.models import Variable
@@ -383,21 +384,37 @@ class DagBuilder:
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
-            task_conf["task_id"]: str = task_name
-            operator: str = task_conf["operator"]
-            task_conf["dag"]: DAG = dag
-            # add task to task_group
-            if task_groups_dict and task_conf.get("task_group_name"):
-                task_conf["task_group"] = task_groups_dict[
-                    task_conf.get("task_group_name")
-                ]
             params: Dict[str, Any] = {
                 k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
             }
-            task: BaseOperator = DagBuilder.make_task(
-                operator=operator, task_params=params
-            )
-            tasks_dict[task.task_id]: BaseOperator = task
+            if "operator" in task_conf:
+                task_conf["task_id"]: str = task_name
+                operator: str = task_conf["operator"]
+                task_conf["dag"]: DAG = dag
+                # add task to task_group
+                if task_groups_dict and task_conf.get("task_group_name"):
+                    task_conf["task_group"] = task_groups_dict[
+                        task_conf.get("task_group_name")
+                    ]
+                task: BaseOperator = DagBuilder.make_task(
+                    operator=operator, task_params=params
+                )
+                tasks_dict[task.task_id]: BaseOperator = task
+            elif "generator" in task_conf:
+                # Task generator
+                generator: str = task_conf[
+                    "generator"
+                ]  # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
+                class_name = generator.split(".")[-1]
+                module_path = generator.replace(f".{class_name}", "")
+                module = importlib.import_module(module_path)
+                instance = getattr(module, class_name)(self)
+                tasks = instance.generate_tasks(params)
+                tasks_dict.update(tasks)
+            else:
+                raise Exception(
+                    f"`{task_name}` has no 'operator' neither 'generator' specified"
+                )
 
         # set task dependencies after creating tasks
         self.set_dependencies(

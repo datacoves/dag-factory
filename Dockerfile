@@ -33,7 +33,7 @@ RUN set -ex \
     /usr/share/doc \
     /usr/share/doc-base
 
-RUN pip install apache-airflow==${AIRFLOW_VERSION}
+RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb
 RUN mkdir -p /root/airflow/dags
 
 ADD . /app
