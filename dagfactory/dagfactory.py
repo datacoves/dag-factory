@@ -82,6 +82,7 @@ class DagFactory:
 
     def build_dags(self) -> Dict[str, DAG]:
         """Build DAGs using the config file."""
+
         dag_configs: Dict[str, Dict[str, Any]] = self.get_dag_configs()
         default_config: Dict[str, Any] = self.get_default_config()
 

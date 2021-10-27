@@ -7,7 +7,17 @@ import importlib
 
 from airflow import DAG, configuration
 from airflow.models import Variable
+from airflow import DAG, configuration
+from airflow.models import Variable
+from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
+from airflow.models import BaseOperator
+from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
+from airflow.operators.bash import BashOperator
 
+# from airflow.sensors.http_sensor import HttpSensor
+# from airflow.sensors.sql_sensor import SqlSensor
+from airflow.utils.module_loading import import_string
+from airflow import __version__ as AIRFLOW_VERSION
 from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
 from airflow.models import BaseOperator
 from airflow.operators.python_operator import PythonOperator
@@ -229,7 +239,7 @@ class DagBuilder:
                 del task_params["execution_date_fn_name"]
                 del task_params["execution_date_fn_file"]
 
-            # use variables as arguments on operator
+            # use variables as arguments on operator   ----EQ: 373
             if utils.check_dict_key(task_params, "variables_as_arguments"):
                 variables: List[Dict[str, str]] = task_params.get(
                     "variables_as_arguments"
@@ -240,9 +250,10 @@ class DagBuilder:
                             variable["variable"], default_var=None
                         )
                 del task_params["variables_as_arguments"]
-            import ipdb
 
-            ipdb.set_trace()
+            # import ipdb
+
+            # ipdb.set_trace()
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
@@ -351,7 +362,7 @@ class DagBuilder:
             default_args=dag_params.get("default_args", None),
             doc_md=dag_params.get("doc_md", None),
         )
-
+        # EQ:514
         if dag_params.get("doc_md_file_path"):
             if not os.path.isabs(dag_params.get("doc_md_file_path")):
                 raise Exception("`doc_md_file_path` must be absolute path")
@@ -374,6 +385,10 @@ class DagBuilder:
         if version.parse(AIRFLOW_VERSION) >= version.parse("1.10.8"):
             dag.tags = dag_params.get("tags", None)
 
+        # import ipdb
+
+        # ipdb.set_trace()
+        # EQ: 538
         tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
 
         # add a property to mark this dag as an auto-generated on
@@ -386,10 +401,11 @@ class DagBuilder:
 
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
+
         for task_name, task_conf in tasks.items():
-            params: Dict[str, Any] = {
-                k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
-            }
+            # params: Dict[str, Any] = {
+            #     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
+            # }
             if "operator" in task_conf:
                 task_conf["task_id"]: str = task_name
                 operator: str = task_conf["operator"]
@@ -399,6 +415,9 @@ class DagBuilder:
                     task_conf["task_group"] = task_groups_dict[
                         task_conf.get("task_group_name")
                     ]
+                params: Dict[str, Any] = {
+                    k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
+                }
                 task: BaseOperator = DagBuilder.make_task(
                     operator=operator, task_params=params
                 )
