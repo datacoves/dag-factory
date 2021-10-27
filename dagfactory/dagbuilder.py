@@ -240,6 +240,9 @@ class DagBuilder:
                             variable["variable"], default_var=None
                         )
                 del task_params["variables_as_arguments"]
+            import ipdb
+
+            ipdb.set_trace()
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
