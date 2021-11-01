@@ -227,7 +227,6 @@ class DagBuilder:
                     seconds=task_params["execution_delta_secs"]
                 )
                 del task_params["execution_delta_secs"]
-            # dojonudo
             if utils.check_dict_key(
                 task_params, "execution_date_fn_name"
             ) and utils.check_dict_key(task_params, "execution_date_fn_file"):
@@ -238,7 +237,7 @@ class DagBuilder:
                 del task_params["execution_date_fn_name"]
                 del task_params["execution_date_fn_file"]
 
-            # use variables as arguments on operator   ----EQ: 373
+            # use variables as arguments on operator
             if utils.check_dict_key(task_params, "variables_as_arguments"):
                 variables: List[Dict[str, str]] = task_params.get(
                     "variables_as_arguments"
@@ -357,11 +356,7 @@ class DagBuilder:
             default_args=dag_params.get("default_args", None),
             doc_md=dag_params.get("doc_md", None),
         )
-        # import ipdb
 
-        # ipdb.set_trace()
-
-        # EQ:514
         if dag_params.get("doc_md_file_path"):
             if not os.path.isabs(dag_params.get("doc_md_file_path")):
                 raise Exception("`doc_md_file_path` must be absolute path")
