@@ -174,7 +174,6 @@ class DagBuilder:
                 # Airflow 2.0 doesn't allow these to be passed to operator
                 del task_params["python_callable_name"]
                 del task_params["python_callable_file"]
-
             # KubernetesPodOperator
             if operator_obj == KubernetesPodOperator:
                 task_params["secrets"] = (
@@ -228,7 +227,7 @@ class DagBuilder:
                     seconds=task_params["execution_delta_secs"]
                 )
                 del task_params["execution_delta_secs"]
-
+            # dojonudo
             if utils.check_dict_key(
                 task_params, "execution_date_fn_name"
             ) and utils.check_dict_key(task_params, "execution_date_fn_file"):
@@ -250,10 +249,6 @@ class DagBuilder:
                             variable["variable"], default_var=None
                         )
                 del task_params["variables_as_arguments"]
-
-            # import ipdb
-
-            # ipdb.set_trace()
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
@@ -362,6 +357,10 @@ class DagBuilder:
             default_args=dag_params.get("default_args", None),
             doc_md=dag_params.get("doc_md", None),
         )
+        # import ipdb
+
+        # ipdb.set_trace()
+
         # EQ:514
         if dag_params.get("doc_md_file_path"):
             if not os.path.isabs(dag_params.get("doc_md_file_path")):
@@ -385,10 +384,6 @@ class DagBuilder:
         if version.parse(AIRFLOW_VERSION) >= version.parse("1.10.8"):
             dag.tags = dag_params.get("tags", None)
 
-        # import ipdb
-
-        # ipdb.set_trace()
-        # EQ: 538
         tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
 
         # add a property to mark this dag as an auto-generated on
@@ -400,12 +395,9 @@ class DagBuilder:
         )
 
         # create dictionary to track tasks and set dependencies
-        tasks_dict: Dict[str, BaseOperator] = {}
 
+        tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
-            # params: Dict[str, Any] = {
-            #     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
-            # }
             if "operator" in task_conf:
                 task_conf["task_id"]: str = task_name
                 operator: str = task_conf["operator"]
@@ -418,21 +410,24 @@ class DagBuilder:
                 params: Dict[str, Any] = {
                     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
                 }
+
                 task: BaseOperator = DagBuilder.make_task(
                     operator=operator, task_params=params
                 )
+
                 tasks_dict[task.task_id]: BaseOperator = task
+
             elif "generator" in task_conf:
+
                 # Task generator
-                generator: str = task_conf[
-                    "generator"
-                ]  # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
+                # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
+                generator: str = task_conf["generator"]
                 class_name = generator.split(".")[-1]
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
                 instance = getattr(module, class_name)(self)
-                tasks = instance.generate_tasks(params)
-                tasks_dict.update(tasks)
+                tasks_dict = instance.generate_tasks(dag)
+
             else:
                 raise Exception(
                     f"`{task_name}` has no 'operator' neither 'generator' specified"
