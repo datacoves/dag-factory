@@ -35,7 +35,7 @@ class AirbyteDbtGenerator:
     def __init__(self, dag_builder):
         self.dag_builder = dag_builder
 
-    def generate_tasks(self, dag_ob) -> Dict:
+    def generate_tasks(self, dtks={}) -> Dict:
 
         """
         Connects to airbyte server, gets sources and creates a new task for each source
@@ -47,32 +47,21 @@ class AirbyteDbtGenerator:
         except Exception as err:
             raise Exception(f"Failed to import operator: {op1}") from err
 
-        task_1_params = {
-            "bash_command": "echo 1",
-            "task_id": "task_1",
-            "dag": dag_ob,
-        }
-
-        task_2_params = {
-            "bash_command": "echo 2",
-            "task_id": "task_2",
-            "dag": dag_ob,
-        }
-
-        task_3_params = {
-            "bash_command": "echo 3",
-            "task_id": "task_3",
-            "dag": dag_ob,
-        }
-
-        task_1: BaseOperator = DagBuilder.make_task(op1, task_1_params)
-        task_2: BaseOperator = DagBuilder.make_task(op1, task_2_params)
-        task_3: BaseOperator = DagBuilder.make_task(op1, task_3_params)
+        list_names = list(dtks.keys())
+        list_tasks = list(dtks.values())
+        listin = list(zip(list_names, list_tasks))
 
         tsk_dict = {}
 
-        tsk_dict[task_1.task_id] = task_1
-        tsk_dict[task_2.task_id] = task_2
-        tsk_dict[task_3.task_id] = task_3
+        vars = [None] * len(listin)
+        # New vars for generate
+        for x in range(0, len(listin)):
+            vars[x] = globals()[f"task_0{x}"] = x
+
+        for x in range(0, len(listin)):
+            vars[x]: BaseOperator = DagBuilder.make_task(op1, list_tasks[x])
+
+        for x in range(0, len(listin)):
+            tsk_dict[list_names[x]] = vars[x]
 
         return tsk_dict

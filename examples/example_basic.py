@@ -1,7 +1,9 @@
 from airflow import DAG
 import dagfactory
 
+# config_file = "/home/airflow/airflow/dags/example_basic.yml"
 config_file = "/app/examples/example_basic.yml"
+
 example_dag_factory = dagfactory.DagFactory(config_file)
 example_dag_factory.get_dag_configs()
 

@@ -356,7 +356,11 @@ class DagBuilder:
             default_args=dag_params.get("default_args", None),
             doc_md=dag_params.get("doc_md", None),
         )
+        # import ipdb
 
+        # ipdb.set_trace()
+
+        # EQ:514
         if dag_params.get("doc_md_file_path"):
             if not os.path.isabs(dag_params.get("doc_md_file_path")):
                 raise Exception("`doc_md_file_path` must be absolute path")
@@ -380,6 +384,9 @@ class DagBuilder:
             dag.tags = dag_params.get("tags", None)
 
         tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
+
+        # ###############
+        #        print(tasks)
 
         # add a property to mark this dag as an auto-generated on
         dag.is_dagfactory_auto_generated = True
@@ -421,7 +428,29 @@ class DagBuilder:
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
                 instance = getattr(module, class_name)(self)
-                tasks_dict = instance.generate_tasks(dag)
+
+                # Here you have to call a method that returns a dictionary that
+                # has all the tasks to be processed by generate_tasks
+
+                # This tasks are only for testing
+
+                task_1_ps = {
+                    "bash_command": "echo One",
+                    "task_id": "Task_ONE",
+                    "dag": dag,
+                }
+
+                task_2_ps = {
+                    "bash_command": "echo Two",
+                    "task_id": "Task_TWO",
+                    "dag": dag,
+                }
+
+                tasks_test = {}
+                tasks_test[task_1_ps["task_id"]] = task_1_ps
+                tasks_test[task_2_ps["task_id"]] = task_2_ps
+
+                tasks_dict = instance.generate_tasks(tasks_test)
 
             else:
                 raise Exception(
