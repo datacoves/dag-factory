@@ -23,3 +23,6 @@ daily_dag_1:
       generator: dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
       tags: [daily]
       task_group_name: extract_and_load
+    # task_4:
+    #   operator: airflow.operators.bash_operator.BashOperator
+    #   command: 'echo 4'

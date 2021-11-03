@@ -385,9 +385,6 @@ class DagBuilder:
 
         tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
 
-        # ###############
-        #        print(tasks)
-
         # add a property to mark this dag as an auto-generated on
         dag.is_dagfactory_auto_generated = True
 
