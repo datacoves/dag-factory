@@ -46,6 +46,11 @@ else:
 SYSTEM_PARAMS: List[str] = ["operator", "dependencies", "task_group_name"]
 
 
+class BaseGenerator:
+    def generate_tasks(params: Dict[str, Any]) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+
 class DagBuilder:
     """
     Generates tasks and a DAG from a config.
@@ -384,13 +389,13 @@ class DagBuilder:
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
+            task_conf["task_id"]: str = task_name
+            operator: str = task_conf["operator"]
+            task_conf["dag"]: DAG = dag
             params: Dict[str, Any] = {
                 k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
             }
             if "operator" in task_conf:
-                task_conf["task_id"]: str = task_name
-                operator: str = task_conf["operator"]
-                task_conf["dag"]: DAG = dag
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
                     task_conf["task_group"] = task_groups_dict[
