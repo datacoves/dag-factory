@@ -12,20 +12,17 @@ default:
   orientation: "LR"
   schedule_interval: "0 1 * * *"
 
-example_dag2:
+example_dag:
   default_args:
     owner: "custom_owner"
     start_date: 2 days
   description: "this is an example dag"
   schedule_interval: "0 3 * * *"
-  task_groups:
-    extract_and_load:
-      tooltip: "Extract and Load taskgroup"
   tasks:
-    # task_1:
-    #   generator: dagfactory.AirbyteDbtGenerator
-    #   task_group_name: extract_and_load
-    task_3:
+    task_1:
       operator: airflow.operators.bash_operator.BashOperator
       bash_command: "echo 1"
-      dependencies: [extract_and_load]
+    task_2:
+      operator: airflow.operators.bash_operator.BashOperator
+      bash_command: "echo 2"
+      dependencies: [task_1]
