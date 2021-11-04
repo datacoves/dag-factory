@@ -95,7 +95,6 @@ class DagFactory:
                 default_config=default_config,
             )
             try:
-                ipdb.set_trace()
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
                 dags[dag["dag_id"]]: DAG = dag["dag"]
             except Exception as err:

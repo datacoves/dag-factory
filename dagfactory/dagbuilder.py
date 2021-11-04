@@ -154,7 +154,6 @@ class DagBuilder:
         except Exception as err:
             raise Exception(f"Failed to import operator: {operator}") from err
         try:
-            #ipdb.set_trace()
             if operator_obj == PythonOperator:
                 if not task_params.get("python_callable_name") and not task_params.get(
                     "python_callable_file"
@@ -295,7 +294,6 @@ class DagBuilder:
         tasks_and_task_groups_config = {**tasks_config, **task_groups_config}
         tasks_and_task_groups_instances = {**operators_dict, **task_groups_dict}
         for name, conf in tasks_and_task_groups_config.items():
-            ipdb.set_trace()
             # if task is in a task group, group_id is prepended to its name
             if conf.get("task_group"):
                 group_id = conf["task_group"].group_id
@@ -392,7 +390,7 @@ class DagBuilder:
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
-            task_conf["task_id"]: str = task_name            
+            task_conf["task_id"]: str = task_name
             task_conf["dag"]: DAG = dag
             params: Dict[str, Any] = {
                 k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
@@ -404,14 +402,14 @@ class DagBuilder:
                     task_conf["task_group"] = task_groups_dict[
                         task_conf.get("task_group_name")
                     ]
-                #ipdb.set_trace()
                 task: BaseOperator = DagBuilder.make_task(
                     operator=operator, task_params=params
                 )
                 tasks_dict[task.task_id]: BaseOperator = task
-                ipdb.set_trace()
             elif "generator" in task_conf:
-                generator: str = task_conf["generator"]# dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator                
+                generator: str = task_conf[
+                    "generator"
+                ]  # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
 
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
@@ -422,21 +420,15 @@ class DagBuilder:
                 class_name = generator.split(".")[-1]
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
-                
-                instance = getattr(module, class_name)(self)                
-                # for task in instance.generate_tasks(params).values():
-                #     #
-                #     tasks_dict[task.task_id]: BaseOperator = task
-                ipdb.set_trace()
-                tasks = instance.generate_tasks(params)                
-                tasks_dict.update(tasks)
+
+                instance = getattr(module, class_name)(self)
+                tasks_dict.update(instance.generate_tasks(params))
             else:
                 raise Exception(
                     f"`{task_name}` has no 'operator' neither 'generator' specified"
                 )
 
         # set task dependencies after creating tasks
-        #ipdb.set_trace()
         self.set_dependencies(
             tasks, tasks_dict, dag_params.get("task_groups", {}), task_groups_dict
         )

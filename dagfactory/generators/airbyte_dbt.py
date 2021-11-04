@@ -9,7 +9,8 @@ from ..dagfactory import DagBuilder
 
 # IMPORTS FOR TESTING
 import ipdb
-#from airflow.operators.bash_operator import BashOperator
+
+# from airflow.operators.bash_operator import BashOperator
 
 
 class AirbyteDbtGenerator:
@@ -17,19 +18,19 @@ class AirbyteDbtGenerator:
         self.dag_builder = dag_builder
 
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         print("generating tasks")
 
         # Pop AirbyteDbtGenerator as it doesn't work: Dag-Factory always expects an Operator
-        params.pop('generator')
-        
-        
+        params.pop("generator")
+
         tasks: Dict[str, BaseOperator] = {}
         for i in range(1, 3):
             params["bash_command"] = f"echo {i}"
-            params["task_id"] = f"task_{i}"
+            params["task_id"] = f"{params['task_id']}_{i}"
             task: BaseOperator = DagBuilder.make_task(
-                    operator="airflow.operators.bash_operator.BashOperator", task_params=params
+                operator="airflow.operators.bash_operator.BashOperator",
+                task_params=params,
             )
             tasks[params["task_id"]] = task
 
@@ -38,4 +39,4 @@ class AirbyteDbtGenerator:
         Connects to airbyte server, gets sources and creates a new task for each source
         """
         # call self.dag_builder to generate new tasks
-        #pass
+        # pass
