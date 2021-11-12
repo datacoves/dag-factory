@@ -1,4 +1,4 @@
-#from airflow.models.dag import DAG
+from airflow.models.dag import DAG
 import dagfactory
 
 config_file = "/app/examples/example_basic.yml"

@@ -1,0 +1,36 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: _airbyte_raw_hubspot_engagements
+        identifier: _AIRBYTE_RAW_HUBSPOT_ENGAGEMENTS
+
+models:
+  - name: _airbyte_raw_hubspot_engagements
+    columns:
+      - name: active
+      - name: allaccessibleteamids
+      - name: associations
+      - name: attachments
+      - name: bodypreview
+      - name: bodypreviewhtml
+      - name: bodypreviewistruncated
+      - name: createdat
+      - name: createdby
+      - name: gdprdeleted
+      - name: id
+      - name: lastupdated
+      - name: metadata
+      - name: modifiedby
+      - name: ownerid
+      - name: portalid
+      - name: queuemembershipids
+      - name: source
+      - name: teamid
+      - name: timestamp
+      - name: type
+      - name: uid
+      - name: _airbyte_ab_id
+      - name: _airbyte_emitted_at

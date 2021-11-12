@@ -10,4 +10,6 @@ airflow users create  --username admin \
           --email admin@example.org \
           -p admin
 
+airflow connections add --conn-host airbyte-server --conn-port 8001 --conn-type http airbyte_conn_example2
+
 airflow scheduler & exec airflow webserver

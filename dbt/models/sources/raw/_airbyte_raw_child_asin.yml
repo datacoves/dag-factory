@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: _airbyte_raw_child_asin
+        identifier: _AIRBYTE_RAW_CHILD_ASIN
+
+models:
+  - name: _airbyte_raw_child_asin
+    columns:
+      - name: _child__asin
+      - name: _parent__asin
+      - name: buy_box_percentage
+      - name: ordered_product_sales
+      - name: ordered_product_sales_-_b2b
+      - name: page_views
+      - name: page_views_percentage
+      - name: session_percentage
+      - name: sessions
+      - name: title
+      - name: total_order_items
+      - name: total_order_items_-_b2b
+      - name: unit_session_percentage
+      - name: unit_session_percentage_-_b2b
+      - name: units_ordered
+      - name: units_ordered_-_b2b
+      - name: _ab_additional_properties
+      - name: _ab_source_file_last_modified
+      - name: _ab_source_file_url
+      - name: _airbyte_ab_id
+      - name: _airbyte_emitted_at

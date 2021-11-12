@@ -33,11 +33,15 @@ RUN set -ex \
     /usr/share/doc \
     /usr/share/doc-base
 
-RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb
+RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb dbt wtforms==2.3.3
 RUN mkdir -p /root/airflow/dags
 
 ADD . /app
 ADD examples/example_basic.py /root/airflow/dags/example_basic.py
+ADD examples/example_airflow_dbt.py /root/airflow/dags/example_airflow_dbt.py
+ADD examples/example_airbyte_operator.py /root/airflow/dags/example_airbyte_operator.py
+ADD profiles.yml /home/root/.dbt/profiles.yml
+ADD profiles.yml /root/.dbt/profiles.yml
 
 WORKDIR /app
 RUN pip install -e .

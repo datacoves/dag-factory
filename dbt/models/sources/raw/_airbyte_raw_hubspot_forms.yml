@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: _airbyte_raw_hubspot_forms
+        identifier: _AIRBYTE_RAW_HUBSPOT_FORMS
+
+models:
+  - name: _airbyte_raw_hubspot_forms
+    columns:
+      - name: _airbyte_ab_id
+      - name: _airbyte_data
+      - name: _airbyte_emitted_at

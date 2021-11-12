@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: _airbyte_raw_uk_people
+        identifier: _AIRBYTE_RAW_UK_PEOPLE

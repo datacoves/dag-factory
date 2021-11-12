@@ -409,7 +409,7 @@ class DagBuilder:
             elif "generator" in task_conf:
                 generator: str = task_conf[
                     "generator"
-                ]  # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
+                ]  # dagfactory.generators.airbyte_dbt.AirbyteGenerator
 
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
@@ -421,7 +421,7 @@ class DagBuilder:
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
 
-                instance = getattr(module, class_name)(self)
+                instance = getattr(module, class_name)(self, params)
                 tasks_dict.update(instance.generate_tasks(params))
             else:
                 raise Exception(

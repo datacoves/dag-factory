@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: _airbyte_raw_cdc_covid_cases_deaths_usa
+        identifier: _AIRBYTE_RAW_CDC_COVID_CASES_DEATHS_USA
+
+models:
+  - name: _airbyte_raw_cdc_covid_cases_deaths_usa
+    columns:
+      - name: consent_cases
+      - name: consent_deaths
+      - name: created_at
+      - name: new_case
+      - name: new_death
+      - name: pnew_case
+      - name: pnew_death
+      - name: state
+      - name: submission_date
+      - name: tot_cases
+      - name: tot_death
+      - name: _airbyte_ab_id
+      - name: _airbyte_emitted_at

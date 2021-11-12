@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: daily_cases_by_state
+    description: Daily cases by state
+    columns:
+      - name: state,
+      - name: new_case,
+      - name: submission_date,       
+      - name: new_death
