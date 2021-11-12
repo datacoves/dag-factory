@@ -1,8 +1,8 @@
 default:
   default_args:
     owner: "default_owner"
-    start_date: 2021-11-04
-    end_date: 2021-11-10
+    start_date: 2021-11-12
+    end_date: 2021-11-15
     retries: 1
     retry_delay_sec: 300
   concurrency: 1
@@ -24,17 +24,17 @@ example_dag2:
   tasks:
     airbyte_generator:
       generator: dagfactory.AirbyteGenerator
-      airflow_connection_id: airbyte_conn_example2
+      airflow_connection_id: airbyte_conn_example
       connections_ids: 
         - ae731fab-7df7-4e35-8567-1beb81ef7dc4
         - e4266d84-87ee-469f-91d4-f1d5b5993b73
-        - e4266d84-87ee-469f-91d4-f1d5b5993b7334       
+        - e4266d84-87ee-469f-91d4-f1d5b5993b7334
       task_group_name: extract_and_load
     airbyte_dbt:
       generator: dagfactory.AirbyteDbtGenerator 
       dbt_project_path: /app/dbt
       dbt_selector:
-      airflow_connection_id: airbyte_conn_example2
+      airflow_connection_id: airbyte_conn_example
     task_3:
       operator: airflow.operators.bash_operator.BashOperator
       bash_command: "echo 1"
