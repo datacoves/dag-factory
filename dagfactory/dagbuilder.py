@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List, Union
 
 import os
 import importlib
-import ipdb
 
 from airflow import DAG, configuration
 from airflow.models import Variable
