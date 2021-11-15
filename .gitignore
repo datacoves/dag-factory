@@ -112,7 +112,4 @@ pip-selfcheck.json
 
 # dbt
 dbt/
-target/
-dbt_modules/
-.config/.user.yml
 /profiles.yml
