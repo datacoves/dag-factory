@@ -33,12 +33,12 @@ DAG_CONFIG = {
     "default_args": {"owner": "custom_owner"},
     "description": "this is an example dag",
     "schedule_interval": "0 3 * * *",
-    "tags" : ["tag1","tag2"],
+    "tags": ["tag1", "tag2"],
     "tasks": {
         "task_1": {
             "operator": "airflow.operators.bash_operator.BashOperator",
             "bash_command": "echo 1",
-            "execution_timeout_secs" : 5,
+            "execution_timeout_secs": 5,
         },
         "task_2": {
             "operator": "airflow.operators.bash_operator.BashOperator",
@@ -63,7 +63,7 @@ DAG_CONFIG_TASK_GROUP = {
         "task_group_2": {
             "dependencies": ["task_group_1"],
         },
-        "task_group_3": {}
+        "task_group_3": {},
     },
     "tasks": {
         "task_1": {
@@ -130,7 +130,7 @@ def test_get_dag_params():
             "task_1": {
                 "operator": "airflow.operators.bash_operator.BashOperator",
                 "bash_command": "echo 1",
-                "execution_timeout_secs": 5
+                "execution_timeout_secs": 5,
             },
             "task_2": {
                 "operator": "airflow.operators.bash_operator.BashOperator",
@@ -157,7 +157,11 @@ def test_get_dag_params_no_start_date():
 def test_make_task_valid():
     td = dagbuilder.DagBuilder("test_dag", DAG_CONFIG, DEFAULT_CONFIG)
     operator = "airflow.operators.bash_operator.BashOperator"
-    task_params = {"task_id": "test_task", "bash_command": "echo 1","execution_timeout_secs":5}
+    task_params = {
+        "task_id": "test_task",
+        "bash_command": "echo 1",
+        "execution_timeout_secs": 5,
+    }
     actual = td.make_task(operator, task_params)
     assert actual.task_id == "test_task"
     assert actual.bash_command == "echo 1"
@@ -213,8 +217,8 @@ def test_build():
     assert isinstance(actual["dag"], DAG)
     assert len(actual["dag"].tasks) == 3
     assert actual["dag"].task_dict["task_1"].downstream_task_ids == {"task_2", "task_3"}
-    if version.parse(AIRFLOW_VERSION) >= version.parse('1.10.8') :
-        assert actual["dag"].tags == ["tag1","tag2"]
+    if version.parse(AIRFLOW_VERSION) >= version.parse("1.10.8"):
+        assert actual["dag"].tags == ["tag1", "tag2"]
 
 
 def test_get_dag_params():
@@ -229,7 +233,10 @@ def test_get_dag_params():
         },
         "schedule_interval": "0 3 * * *",
         "task_groups": {
-            "task_group_1": {"tooltip": "this is a task group", "dependencies": ["task_1"]},
+            "task_group_1": {
+                "tooltip": "this is a task group",
+                "dependencies": ["task_1"],
+            },
             "task_group_2": {"dependencies": ["task_group_1"]},
             "task_group_3": {},
         },
@@ -287,17 +294,24 @@ def test_build_task_groups():
             td.build()
     else:
         actual = td.build()
-        task_group_1 = {t for t in actual["dag"].task_dict if t.startswith("task_group_1")}
-        task_group_2 = {t for t in actual["dag"].task_dict if t.startswith("task_group_2")}
+        task_group_1 = {
+            t for t in actual["dag"].task_dict if t.startswith("task_group_1")
+        }
+        task_group_2 = {
+            t for t in actual["dag"].task_dict if t.startswith("task_group_2")
+        }
         assert actual["dag_id"] == "test_dag"
         assert isinstance(actual["dag"], DAG)
         assert len(actual["dag"].tasks) == 6
-        assert actual["dag"].task_dict["task_1"].downstream_task_ids == {"task_group_1.task_2"}
+        assert actual["dag"].task_dict["task_1"].downstream_task_ids == {
+            "task_group_1.task_2"
+        }
         assert actual["dag"].task_dict["task_group_1.task_2"].downstream_task_ids == {
             "task_group_1.task_3"
         }
         assert actual["dag"].task_dict["task_group_1.task_3"].downstream_task_ids == {
-            "task_4", "task_group_2.task_5",
+            "task_4",
+            "task_group_2.task_5",
         }
         assert actual["dag"].task_dict["task_group_2.task_5"].downstream_task_ids == {
             "task_group_2.task_6",
@@ -315,7 +329,9 @@ def test_make_task_groups():
     }
     dag = "dag"
     task_groups = dagbuilder.DagBuilder.make_task_groups(task_group_dict, dag)
-    expected = MockTaskGroup(tooltip="this is a task group", group_id="task_group", dag=dag)
+    expected = MockTaskGroup(
+        tooltip="this is a task group", group_id="task_group", dag=dag
+    )
     if version.parse(AIRFLOW_VERSION) < version.parse("2.0.0"):
         assert task_groups == {}
     else:

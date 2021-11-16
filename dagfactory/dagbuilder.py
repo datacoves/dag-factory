@@ -390,12 +390,12 @@ class DagBuilder:
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
             task_conf["task_id"]: str = task_name
-            operator: str = task_conf["operator"]
             task_conf["dag"]: DAG = dag
             params: Dict[str, Any] = {
                 k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
             }
             if "operator" in task_conf:
+                operator: str = task_conf["operator"]
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
                     task_conf["task_group"] = task_groups_dict[
@@ -406,16 +406,22 @@ class DagBuilder:
                 )
                 tasks_dict[task.task_id]: BaseOperator = task
             elif "generator" in task_conf:
-                # Task generator
                 generator: str = task_conf[
                     "generator"
-                ]  # dagfactory.generators.airbyte_dbt.AirbyteDbtGenerator
+                ]  # dagfactory.generators.airbyte_dbt.AirbyteGenerator
+
+                # add task to task_group
+                if task_groups_dict and task_conf.get("task_group_name"):
+                    task_conf["task_group"] = task_groups_dict[
+                        task_conf.get("task_group_name")
+                    ]
+
                 class_name = generator.split(".")[-1]
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
-                instance = getattr(module, class_name)(self)
-                tasks = instance.generate_tasks(params)
-                tasks_dict.update(tasks)
+
+                instance = getattr(module, class_name)(self, params)
+                tasks_dict.update(instance.generate_tasks(params))
             else:
                 raise Exception(
                     f"`{task_name}` has no 'operator' neither 'generator' specified"

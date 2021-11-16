@@ -85,7 +85,9 @@ Contributions are welcome! Just submit a Pull Request or Github Issue.
 
 ```bash
 docker build -t dag-factory .
-docker run -d -p "8080:8080" -v "$(pwd):/app" dag-factory
+
+## --network main_network refers to dag-factory (Airflow) needs to be ran in the same Docker Network as Airbyte
+docker run -d -p "8080:8080" -v "$(pwd):/app" --network main_network dag-factory
 ```
 
 Navigate to https://localhost:8080 and login using credentials admin/admin.
