@@ -80,8 +80,10 @@ class AirbyteGenerator:
                 else:
                     return response_json
             else:
-                raise RequestException
-        except requests.exceptions.RequestException as e:
+                raise RequestException(
+                    f"Unexpected status code from airbyte: {response.status_code}"
+                )
+        except RequestException as e:
             raise AirbyteGeneratorException("Airbyte API error: " + e)
 
     def generate_sync_task(
@@ -123,18 +125,47 @@ class AirbyteGenerator:
             connections_ids = self.remove_inexistant_conn_ids(connections_ids)
 
         tasks: Dict[str, BaseOperator] = {}
-        try:
-            for conn_id in connections_ids:
-                task_id = self.AIRBYTE_TASK_ID_PREFIX + str(conn_id)
-                params["task_id"] = task_id
-                params["connection_id"] = conn_id
-                tasks[task_id] = self.generate_sync_task(
-                    params, self.AIRFLOW_OPERATOR_FULL_PATH
-                )
-        except Exception as e:
-            raise e
+        for conn_id in connections_ids:
+            task_id = self.AIRBYTE_TASK_ID_PREFIX + str(conn_id)
+            params["task_id"] = task_id
+            params["connection_id"] = conn_id
+            tasks[task_id] = self.generate_sync_task(
+                params, self.AIRFLOW_OPERATOR_FULL_PATH
+            )
 
         return tasks
+
+    def _get_airbyte_destination(self, id):
+        """
+        Given a destination id, returns the destination payload
+        """
+
+        for destination in self.airbyte_destinations:
+            if destination["destinationId"] == id:
+                return destination["connectionConfiguration"]
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are no destinations for id {id}"
+        )
+
+    def _get_airbyte_connection_for_table(self, table):
+        """
+        Given a table name, returns the corresponding airbyte connection
+        """
+
+        for conn in self.airbyte_connections:
+            for stream in conn["syncCatalog"]["streams"]:
+                airbyte_candidate_name = (
+                    self.AIRBYTE_DESTINATION_TABLE_PREFIX + stream["stream"]["name"]
+                ).lower()
+                if airbyte_candidate_name == table:
+                    return conn
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are no connections for table {table}"
+        )
+
+
+class AirbyteDbtGeneratorException(Exception):
+    pass
 
 
 class AirbyteDbtGenerator(AirbyteGenerator):
@@ -158,51 +189,27 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         stderr = process.stderr.decode()
         stdout = process.stdout.decode()
 
-        try:
-            if not stderr and stdout:
-                sources_list = [
-                    src.lstrip("source:") for src in stdout.split("\n") if src
-                ]
+        if stderr or not stdout:
+            raise AirbyteDbtGeneratorException(
+                f"Unexpected dbt result: {stderr} - {stdout}"
+            )
 
-                for conn in self.airbyte_connections:
-                    connection_id = conn["connectionId"]
-                    for stream in conn["syncCatalog"]["streams"]:
-                        airbyte_candidate_name = (
-                            self.AIRBYTE_DESTINATION_TABLE_PREFIX
-                            + stream["stream"]["name"]
-                        ).lower()
+        sources_list = [src.lstrip("source:") for src in stdout.split("\n") if src]
 
-                        for source in sources_list:
-                            # Transform the 'dbt source' into [db, schema, table]
-                            source_db, source_schema, source_table = [
-                                element.lower() for element in source.split(".")
-                            ]
+        for source in sources_list:
+            # Transform the 'dbt source' into [db, schema, table]
+            source_db, source_schema, source_table = [
+                element.lower() for element in source.split(".")
+            ]
+            conn = self._get_airbyte_connection_for_table(source_table)
+            destination_config = self._get_airbyte_destination(conn["destinationId"])
 
-                            if source_table == airbyte_candidate_name:
-                                destination_id = conn["destinationId"]
+            if (
+                source_db == destination_config["database"].lower()
+                and source_schema == destination_config["schema"].lower()
+            ):
+                connections_ids.append(conn["connectionId"])
 
-                                for destination in self.airbyte_destinations:
-                                    if destination["destinationId"] == destination_id:
-                                        connection_config = destination[
-                                            "connectionConfiguration"
-                                        ]
-
-                                try:
-                                    if (
-                                        source_db
-                                        == connection_config["database"].lower()
-                                    ) and (
-                                        source_schema
-                                        == connection_config["schema"].lower()
-                                    ):
-                                        connections_ids.append(connection_id)
-                                except TypeError:
-                                    raise AirbyteGeneratorException(
-                                        f"Airbyte error: there are no destinations for conn"
-                                    )
-
-            params["connections_ids"] = connections_ids
-        except Exception as e:
-            raise AirbyteGeneratorException(e)
+        params["connections_ids"] = connections_ids
 
         return super().generate_tasks(params)
