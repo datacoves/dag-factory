@@ -330,7 +330,7 @@ class DagBuilder:
             ),
             concurrency=dag_params.get(
                 "concurrency",
-                configuration.conf.getint("core", "dag_concurrency"),
+                configuration.conf.getint("core", "max_active_tasks_per_dag"),
             ),
             catchup=dag_params.get(
                 "catchup",
