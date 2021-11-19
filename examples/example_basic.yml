@@ -1,23 +1,23 @@
-default:
-  default_args:
-    owner: "default_owner"
-    start_date: 2021-11-12
-    end_date: 2021-11-15
-    retries: 1
-    retry_delay_sec: 300
-  concurrency: 1
-  max_active_runs: 1
-  dagrun_timeout_sec: 600
-  default_view: "tree"
-  orientation: "LR"
-  schedule_interval: "0 1 * * *"
+# default:
+#   default_args:
+#     owner: "default_owner"
+#     start_date: 2021-11-12
+#     end_date: 2021-11-15
+#     retries: 1
+#     retry_delay_sec: 300
+#   concurrency: 1
+#   max_active_runs: 1
+#   dagrun_timeout_sec: 600
+#   default_view: "tree"
+#   orientation: "LR"
+#   schedule_interval: "0 1 * * *"
 
 example_dag2:
   default_args:
-    owner: "custom_owner"
+    #owner: "custom_owner"
     start_date: 2 days
-  description: "this is an example dag"
-  schedule_interval: "0 3 * * *"
+  #description: "this is an example dag"
+  #schedule_interval: "0 3 * * *"
   task_groups:
     extract_and_load:
       tooltip: "Extract and Load taskgroup"
@@ -30,11 +30,11 @@ example_dag2:
         - e4266d84-87ee-469f-91d4-f1d5b5993b73
         - e4266d84-87ee-469f-91d4-f1d5b5993b7334
       task_group_name: extract_and_load
-    airbyte_dbt:
-      generator: dagfactory.AirbyteDbtGenerator 
-      dbt_project_path: /app/dbt
-      dbt_selector:
-      airflow_connection_id: airbyte_conn_example
+    # airbyte_dbt:
+    #   generator: dagfactory.AirbyteDbtGenerator 
+    #   dbt_project_path: /app/dbt
+    #   dbt_selector:
+    #   airflow_connection_id: airbyte_conn_example
     task_3:
       operator: airflow.operators.bash_operator.BashOperator
       bash_command: "echo 1"

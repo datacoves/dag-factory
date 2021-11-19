@@ -6,6 +6,7 @@ from airflow.utils.dates import days_ago
 from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
 from airflow.hooks.base import BaseHook
 import subprocess, requests, json
+from slugify import slugify
 
 
 class AirbyteGeneratorException(Exception):
@@ -45,6 +46,9 @@ class AirbyteGenerator:
         airbyte_api_endpoint_list_destinations = (
             airbyte_api_endpoint_list_entity.format(entity="destinations")
         )
+        airbyte_api_endpoint_list_sources = (
+            airbyte_api_endpoint_list_entity.format(entity="sources")
+        )
 
         self.airbyte_workspace_id = self.airbyte_api_call(
             airbyte_api_endpoint_list_workspaces, "workspaces"
@@ -58,6 +62,11 @@ class AirbyteGenerator:
         self.airbyte_destinations = self.airbyte_api_call(
             airbyte_api_endpoint_list_destinations,
             "destinations",
+            self.airbyte_api_standard_req_body,
+        )
+        self.airbyte_sources = self.airbyte_api_call(
+            airbyte_api_endpoint_list_sources,
+            "sources",
             self.airbyte_api_standard_req_body,
         )
 
@@ -124,9 +133,11 @@ class AirbyteGenerator:
         if "AirbyteGenerator" in generator_class:
             connections_ids = self.remove_inexistant_conn_ids(connections_ids)
 
+        
+
         tasks: Dict[str, BaseOperator] = {}
         for conn_id in connections_ids:
-            task_id = self.AIRBYTE_TASK_ID_PREFIX + str(conn_id)
+            task_id = self._create_airbyte_connection_name_for_id(conn_id)
             params["task_id"] = task_id
             params["connection_id"] = conn_id
             tasks[task_id] = self.generate_sync_task(
@@ -147,6 +158,30 @@ class AirbyteGenerator:
             f"Airbyte error: there are no destinations for id {id}"
         )
 
+    def _get_airbyte_destination_name(self, id):
+        """
+        Given a destination id, returns it's name
+        """
+
+        for destination in self.airbyte_destinations:
+            if destination["destinationId"] == id:
+                return destination["name"]
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are no destinations for id {id}"
+        )
+
+    def _get_airbyte_source_name(self, id):
+        """
+        Given a source id, returns it's name
+        """
+
+        for source in self.airbyte_sources:
+            if source["sourceId"] == id:
+                return source["name"]
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are no sources for id {id}"
+        )
+
     def _get_airbyte_connection_for_table(self, table):
         """
         Given a table name, returns the corresponding airbyte connection
@@ -161,6 +196,20 @@ class AirbyteGenerator:
                     return conn
         raise AirbyteGeneratorException(
             f"Airbyte error: there are no connections for table {table}"
+        )
+
+    def _create_airbyte_connection_name_for_id(self, connId):
+        """
+        Given a ConnectionID, create it's name using both Source and Destination ones
+        """
+        for conn in self.airbyte_connections:
+            if conn['connectionId'] == connId:
+                source_name = self._get_airbyte_source_name(conn['sourceId'])
+                destination_name = self._get_airbyte_destination_name(conn['destinationId'])
+                return slugify(f"{source_name}_to_{destination_name}")
+
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are missing names for connection ID {connId}"
         )
 
 
