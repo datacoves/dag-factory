@@ -46,48 +46,36 @@ class AirbyteGenerator:
         airbyte_api_endpoint_list_destinations = (
             airbyte_api_endpoint_list_entity.format(entity="destinations")
         )
-        airbyte_api_endpoint_list_sources = (
-            airbyte_api_endpoint_list_entity.format(entity="sources")
+        airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
+            entity="sources"
         )
 
         self.airbyte_workspace_id = self.airbyte_api_call(
-            airbyte_api_endpoint_list_workspaces, "workspaces"
-        )["workspaceId"]
+            airbyte_api_endpoint_list_workspaces,
+        )["workspaces"][0]["workspaceId"]
         self.airbyte_api_standard_req_body = {"workspaceId": self.airbyte_workspace_id}
         self.airbyte_connections = self.airbyte_api_call(
             airbyte_api_endpoint_list_connections,
-            "connections",
             self.airbyte_api_standard_req_body,
-        )
+        )["connections"]
         self.airbyte_destinations = self.airbyte_api_call(
             airbyte_api_endpoint_list_destinations,
-            "destinations",
             self.airbyte_api_standard_req_body,
-        )
+        )["destinations"]
         self.airbyte_sources = self.airbyte_api_call(
             airbyte_api_endpoint_list_sources,
-            "sources",
             self.airbyte_api_standard_req_body,
-        )
+        )["sources"]
 
-    def airbyte_api_call(
-        self, endpoint: str, call_keyword: str, request_body: Dict[str, str] = None
-    ):
+    def airbyte_api_call(self, endpoint: str, body: Dict[str, str] = None):
         """
         Generic `api caller` for contacting Airbyte
         """
         try:
-            if request_body is not None:
-                response = requests.post(endpoint, json=request_body)
-            else:
-                response = requests.post(endpoint)
+            response = requests.post(endpoint, json=body)
 
             if response.status_code == 200:
-                response_json = json.loads(response.text)[call_keyword]
-                if len(response_json) <= 1:
-                    return response_json[0] or False
-                else:
-                    return response_json
+                return json.loads(response.text)
             else:
                 raise RequestException(
                     f"Unexpected status code from airbyte: {response.status_code}"
@@ -132,8 +120,6 @@ class AirbyteGenerator:
         generator_class = params.pop("generator")
         if "AirbyteGenerator" in generator_class:
             connections_ids = self.remove_inexistant_conn_ids(connections_ids)
-
-        
 
         tasks: Dict[str, BaseOperator] = {}
         for conn_id in connections_ids:
@@ -203,9 +189,11 @@ class AirbyteGenerator:
         Given a ConnectionID, create it's name using both Source and Destination ones
         """
         for conn in self.airbyte_connections:
-            if conn['connectionId'] == connId:
-                source_name = self._get_airbyte_source_name(conn['sourceId'])
-                destination_name = self._get_airbyte_destination_name(conn['destinationId'])
+            if conn["connectionId"] == connId:
+                source_name = self._get_airbyte_source_name(conn["sourceId"])
+                destination_name = self._get_airbyte_destination_name(
+                    conn["destinationId"]
+                )
                 return slugify(f"{source_name}_to_{destination_name}")
 
         raise AirbyteGeneratorException(
