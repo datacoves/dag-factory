@@ -206,7 +206,7 @@ class AirbyteGenerator:
             if conn['connectionId'] == connId:
                 source_name = self._get_airbyte_source_name(conn['sourceId'])
                 destination_name = self._get_airbyte_destination_name(conn['destinationId'])
-                return slugify(f"{source_name}_to_{destination_name}")
+                return slugify(f"{source_name} to {destination_name}", separator='-')
 
         raise AirbyteGeneratorException(
             f"Airbyte error: there are missing names for connection ID {connId}"
