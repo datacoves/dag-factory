@@ -25,11 +25,12 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 REQUIRED = [
     "apache-airflow[kubernetes]>=2.1.0",
-    "pyyaml",
-    "packaging",
-    "apache-airflow-providers-http",
-    "apache-airflow-providers-airbyte",
-    "airflow-dbt",
+    "pyyaml==6.0",
+    "packaging==20.9",
+    "apache-airflow-providers-http==2.0.1",
+    "apache-airflow-providers-airbyte==2.1.1",
+    "airflow-dbt==0.4.0",
+    'python-slugify==4.0.1'
 ]
 DEV_REQUIRED = ["black", "pytest", "pylint", "pytest-cov", "tox"]
 
