@@ -23,7 +23,6 @@ class AirbyteGenerator:
         )
         self.AIRBYTE_TASK_ID_PREFIX = "AIRBYTE_SYNC_TASK_"
         self.AIRBYTE_DESTINATION_TABLE_PREFIX = "_AIRBYTE_RAW_"
-        self.DBT_CMD_LIST_SOURCES = "dbt ls --resource-type source"
 
         try:
             airbyte_connection_name = params["airflow_connection_id"]
@@ -214,26 +213,27 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         dbt_project_path = params.pop("dbt_project_path")
         dbt_selector = params.pop("dbt_selector", [])
         # This is the folder to copy project to before running dbt
-        run_path = params.pop("run_path", None)
+        deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
+        run_dbt_compile = params.pop("run_dbt_compile", True)
 
         cwd = dbt_project_path
-        if run_path:
+        if deploy_path:
             # Move folders
-            cwd = run_path
-            subprocess.run(["rm", "-rf", cwd], check=True)
-            subprocess.run(["cp", "-rf", dbt_project_path, cwd], check=True)
+            cwd = deploy_path
+            subprocess.run(["rm", "-rf", deploy_path], check=True)
+            subprocess.run(["cp", "-rf", dbt_project_path, deploy_path], check=True)
 
         if run_dbt_deps:
             subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
 
-        dbt_list_sources_cmd = self.DBT_CMD_LIST_SOURCES.split()
-        dbt_list_sources_cmd += dbt_selector
+        if run_dbt_compile:
+            subprocess.run(["dbt", "compile"], check=True, cwd=cwd)
 
         # Call DBT on the specified path
         process = subprocess.run(
-            cwd,
-            cwd=dbt_project_path,
+            ["dbt", "ls", "--resource-type", "source"] + dbt_selector,
+            cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
