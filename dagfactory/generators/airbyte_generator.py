@@ -1,12 +1,14 @@
 from typing import Any, Dict
+from datetime import datetime, timedelta
+import subprocess, requests, json
+from slugify import slugify
+from pathlib import Path
 from airflow.models import BaseOperator
 from airflow.models.base import Base
-from requests.exceptions import RequestException
 from airflow.utils.dates import days_ago
 from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
 from airflow.hooks.base import BaseHook
-import subprocess, requests, json
-from slugify import slugify
+from requests.exceptions import RequestException
 
 
 class AirbyteGeneratorException(Exception):
@@ -122,7 +124,7 @@ class AirbyteGenerator:
         if "AirbyteGenerator" in generator_class:
             connections_ids = self.remove_inexistant_conn_ids(connections_ids)
 
-        tasks: Dict[str, BaseOperator] = {}
+        tasks: Dict[str, BaseOperator] = dict()
         for conn_id in connections_ids:
             task_id = self._create_airbyte_connection_name_for_id(conn_id)
             params["task_id"] = task_id
@@ -208,8 +210,7 @@ class AirbyteDbtGeneratorException(Exception):
 
 class AirbyteDbtGenerator(AirbyteGenerator):
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        connections_ids = []
-
+        DAG_GENERATION_TIMEOUT = 300  # 5 minutes
         dbt_project_path = params.pop("dbt_project_path")
         dbt_list_args = params.pop("dbt_list_args", "")
         # This is the folder to copy project to before running dbt
@@ -222,8 +223,14 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         if deploy_path:
             # Move folders
             cwd = deploy_path
+            running_flag = Path(deploy_path, "is_running")
+            if running_flag.exists:
+                created = datetime.fromtimestamp(running_flag.stat().st_ctime)
+                if datetime.now() - created < timedelta(seconds=DAG_GENERATION_TIMEOUT):
+                    return dict()
             subprocess.run(["rm", "-rf", deploy_path], check=True)
             subprocess.run(["cp", "-rf", dbt_project_path, deploy_path], check=True)
+            running_flag.touch()
 
         if run_dbt_deps:
             subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
@@ -243,6 +250,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
         sources_list = [src.lstrip("source:") for src in stdout.split("\n") if src]
 
+        connections_ids = []
         for source in sources_list:
             # Transform the 'dbt source' into [db, schema, table]
             source_db, source_schema, source_table = [
