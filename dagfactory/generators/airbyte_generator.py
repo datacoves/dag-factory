@@ -89,7 +89,8 @@ class AirbyteGenerator:
         """
         Standard Airflow call to `make_task`
             same logic as dagbuilder.py:
-                this re-usage is why params(dict) must be cleaned up from any extra information that the corresponding operator can't handle
+                this re-usage is why params(dict) must be cleaned up from any
+                extra information that the corresponding operator can't handle
         """
         return self.dag_builder.make_task(
             operator=operator,
@@ -98,7 +99,8 @@ class AirbyteGenerator:
 
     def remove_inexistant_conn_ids(self, connections_ids):
         """
-        Overwrite the user-written `connections_ids` list (.yml) with the ones actually existing inside Airbyte\n
+        Overwrite the user-written `connections_ids` list (.yml) with the ones
+        actually existing inside Airbyte\n
         If not handled, a lot of Airflow tasks would fail.
         """
         return [
@@ -210,26 +212,33 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         connections_ids = []
 
         dbt_project_path = params.pop("dbt_project_path")
-        dbt_selector = params.pop("dbt_selector", None)
+        dbt_selector = params.pop("dbt_selector", [])
+        # This is the folder to copy project to before running dbt
+        run_path = params.pop("run_path", None)
+        run_dbt_deps = params.pop("run_dbt_deps", True)
+
+        cwd = dbt_project_path
+        if run_path:
+            # Move folders
+            cwd = run_path
+            subprocess.run(["rm", "-rf", cwd], check=True)
+            subprocess.run(["cp", "-rf", dbt_project_path, cwd], check=True)
+
+        if run_dbt_deps:
+            subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
 
         dbt_list_sources_cmd = self.DBT_CMD_LIST_SOURCES.split()
-        if dbt_selector:
-            dbt_list_sources_cmd += dbt_selector
+        dbt_list_sources_cmd += dbt_selector
 
         # Call DBT on the specified path
         process = subprocess.run(
-            dbt_list_sources_cmd,
+            cwd,
             cwd=dbt_project_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            check=True,
         )
-        stderr = process.stderr.decode()
         stdout = process.stdout.decode()
-
-        if stderr or not stdout:
-            raise AirbyteDbtGeneratorException(
-                f"Unexpected dbt result: {stderr} - {stdout}"
-            )
 
         sources_list = [src.lstrip("source:") for src in stdout.split("\n") if src]
 
