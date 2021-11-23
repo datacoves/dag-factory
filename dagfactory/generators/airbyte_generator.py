@@ -211,7 +211,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         connections_ids = []
 
         dbt_project_path = params.pop("dbt_project_path")
-        dbt_selector = params.pop("dbt_selector", [])
+        dbt_list_args = params.pop("dbt_list_args", "")
         # This is the folder to copy project to before running dbt
         deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
@@ -232,7 +232,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
         # Call DBT on the specified path
         process = subprocess.run(
-            ["dbt", "ls", "--resource-type", "source"] + dbt_selector,
+            ["dbt", "ls", "--resource-type", "source"] + dbt_list_args.split(),
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
