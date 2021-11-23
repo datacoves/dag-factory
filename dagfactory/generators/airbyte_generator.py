@@ -259,10 +259,13 @@ class AirbyteDbtGenerator(AirbyteGenerator):
                 source_db = sources_database.lower()
             conn = self._get_airbyte_connection_for_table(source_table)
             destination_config = self._get_airbyte_destination(conn["destinationId"])
+            schema = destination_config["schema"].lower()
+            if conn["namespaceDefinition"] == "customformat":
+                schema = conn["namespaceFormat"]
 
             if (
                 source_db == destination_config["database"].lower()
-                and source_schema == destination_config["schema"].lower()
+                and source_schema == schema
             ):
                 connections_ids.append(conn["connectionId"])
 
