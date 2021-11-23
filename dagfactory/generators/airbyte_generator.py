@@ -23,8 +23,7 @@ class AirbyteGenerator:
             + "."
             + AirbyteTriggerSyncOperator.__qualname__
         )
-        self.AIRBYTE_TASK_ID_PREFIX = "AIRBYTE_SYNC_TASK_"
-        self.AIRBYTE_DESTINATION_TABLE_PREFIX = "_AIRBYTE_RAW_"
+        self.AIRBYTE_DESTINATION_TABLE_PREFIX = "_airbyte_raw_"
 
         try:
             airbyte_connection_name = params["airflow_connection_id"]
@@ -101,7 +100,7 @@ class AirbyteGenerator:
     def remove_inexistant_conn_ids(self, connections_ids):
         """
         Overwrite the user-written `connections_ids` list (.yml) with the ones
-        actually existing inside Airbyte\n
+        actually existing inside Airbyte
         If not handled, a lot of Airflow tasks would fail.
         """
         return [
@@ -113,8 +112,8 @@ class AirbyteGenerator:
 
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
-        AirbyteGenerator entry-point from both `dagbuilder` and `AirbyteDbtGenerator`\n
-            Clean params dictionary from information that Airflow can't handle\n
+        AirbyteGenerator entry-point from both `dagbuilder`
+            Clean params dictionary from information that Airflow can't handle
             Fill and return the tasks dictionary
         """
         params["airbyte_conn_id"] = params.pop("airflow_connection_id")
@@ -178,29 +177,28 @@ class AirbyteGenerator:
 
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
-                airbyte_candidate_name = (
-                    self.AIRBYTE_DESTINATION_TABLE_PREFIX + stream["stream"]["name"]
-                ).lower()
-                if airbyte_candidate_name == table:
+                if stream["stream"]["name"].lower() == table.replace(
+                    self.AIRBYTE_DESTINATION_TABLE_PREFIX, ""
+                ):
                     return conn
         raise AirbyteGeneratorException(
             f"Airbyte error: there are no connections for table {table}"
         )
 
-    def _create_airbyte_connection_name_for_id(self, connId):
+    def _create_airbyte_connection_name_for_id(self, conn_id):
         """
         Given a ConnectionID, create it's name using both Source and Destination ones
         """
         for conn in self.airbyte_connections:
-            if conn["connectionId"] == connId:
+            if conn["connectionId"] == conn_id:
                 source_name = self._get_airbyte_source_name(conn["sourceId"])
                 destination_name = self._get_airbyte_destination_name(
                     conn["destinationId"]
                 )
-                return slugify(f"{source_name}_to_{destination_name}")
+                return slugify(f"{source_name} → {destination_name}")
 
         raise AirbyteGeneratorException(
-            f"Airbyte error: there are missing names for connection ID {connId}"
+            f"Airbyte error: there are missing names for connection ID {conn_id}"
         )
 
 
@@ -224,7 +222,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             # Move folders
             cwd = deploy_path
             running_flag = Path(deploy_path, "is_running")
-            if running_flag.exists:
+            if running_flag.exists():
                 created = datetime.fromtimestamp(running_flag.stat().st_ctime)
                 if datetime.now() - created < timedelta(seconds=DAG_GENERATION_TIMEOUT):
                     return dict()
@@ -248,7 +246,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         )
         stdout = process.stdout.decode()
 
-        sources_list = [src.lstrip("source:") for src in stdout.split("\n") if src]
+        sources_list = [src.replace("source:", "") for src in stdout.split("\n") if src]
 
         connections_ids = []
         for source in sources_list:
