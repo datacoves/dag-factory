@@ -96,7 +96,8 @@ class DagFactory:
             )
             try:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
-                dags[dag["dag_id"]]: DAG = dag["dag"]
+                if dag:
+                    dags[dag["dag_id"]]: DAG = dag["dag"]
             except Exception as err:
                 raise Exception(
                     f"Failed to generate dag {dag_name}. verify config is correct"

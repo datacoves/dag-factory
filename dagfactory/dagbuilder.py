@@ -421,7 +421,11 @@ class DagBuilder:
                 module = importlib.import_module(module_path)
 
                 instance = getattr(module, class_name)(self, params)
-                tasks_dict.update(instance.generate_tasks(params))
+                generated_tasks = instance.generate_tasks(params)
+                if not generated_tasks:
+                    # when tasks are not generated, DAG should not be created
+                    return dict()
+                tasks_dict.update(generated_tasks)
             else:
                 raise Exception(
                     f"`{task_name}` has no 'operator' neither 'generator' specified"
