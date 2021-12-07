@@ -219,16 +219,16 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
         cwd = dbt_project_path
         if deploy_path:
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=dbt_project_path,
+            ).stdout.strip("\n")
+            deploy_path += "-" + commit
             # Move folders
-            cwd = deploy_path
-            running_flag = Path(deploy_path, "is_running")
-            if running_flag.exists():
-                created = datetime.fromtimestamp(running_flag.stat().st_ctime)
-                if datetime.now() - created < timedelta(seconds=DAG_GENERATION_TIMEOUT):
-                    return dict()
-            subprocess.run(["rm", "-rf", deploy_path], check=True)
             subprocess.run(["cp", "-rf", dbt_project_path, deploy_path], check=True)
-            running_flag.touch()
+            cwd = deploy_path
 
         if run_dbt_deps:
             subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
