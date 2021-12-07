@@ -391,9 +391,6 @@ class DagBuilder:
         for task_name, task_conf in tasks.items():
             task_conf["task_id"]: str = task_name
             task_conf["dag"]: DAG = dag
-            params: Dict[str, Any] = {
-                k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
-            }
             if "operator" in task_conf:
                 operator: str = task_conf["operator"]
                 # add task to task_group
@@ -401,6 +398,9 @@ class DagBuilder:
                     task_conf["task_group"] = task_groups_dict[
                         task_conf.get("task_group_name")
                     ]
+                params: Dict[str, Any] = {
+                    k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
+                }
                 task: BaseOperator = DagBuilder.make_task(
                     operator=operator, task_params=params
                 )
@@ -415,7 +415,9 @@ class DagBuilder:
                     task_conf["task_group"] = task_groups_dict[
                         task_conf.get("task_group_name")
                     ]
-
+                params: Dict[str, Any] = {
+                    k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
+                }
                 class_name = generator.split(".")[-1]
                 module_path = generator.replace(f".{class_name}", "")
                 module = importlib.import_module(module_path)
