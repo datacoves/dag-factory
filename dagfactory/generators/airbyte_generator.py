@@ -215,7 +215,6 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", True)
-        sources_database = params.pop("sources_database", None)
 
         cwd = dbt_project_path
         if deploy_path:
@@ -251,15 +250,16 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         if deploy_path:
             subprocess.run(["rm", "-rf", deploy_path], check=True)
 
+        manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
+
         connections_ids = []
         for source in sources_list:
+
             # Transform the 'dbt source' into [db, schema, table]
-            source_db, source_schema, source_table = [
-                element.lower() for element in source.split(".")
-            ]
-            if sources_database:
-                # Overrides source database by configuration
-                source_db = sources_database.lower()
+            source_db = manifest_json["sources"][source]["database"].lower()
+            source_schema = manifest_json["sources"][source]["schema"].lower()
+            source_table = manifest_json["sources"][source]["identifier"].lower()
+
             conn = self._get_airbyte_connection_for_table(source_table)
             destination_config = self._get_airbyte_destination(conn["destinationId"])
             schema = destination_config["schema"].lower()
