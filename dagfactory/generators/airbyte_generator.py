@@ -247,10 +247,10 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
         sources_list = [src.replace("source:", "") for src in stdout.split("\n") if src]
 
+        manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
+
         if deploy_path:
             subprocess.run(["rm", "-rf", deploy_path], check=True)
-
-        manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
 
         connections_ids = []
         for source in sources_list:
