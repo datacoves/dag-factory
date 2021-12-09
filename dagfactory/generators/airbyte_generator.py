@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from datetime import datetime, timedelta
-import subprocess, requests, json, os
+import subprocess, requests, json
 from slugify import slugify
 from pathlib import Path
 from airflow.models import BaseOperator
@@ -250,7 +250,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         if deploy_path:
             subprocess.run(["rm", "-rf", deploy_path], check=True)
 
-        manifest_json = json.load(open(os.path.join(cwd, "target", "manifest.json")))
+        manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
 
         connections_ids = []
         for source in sources_list:
