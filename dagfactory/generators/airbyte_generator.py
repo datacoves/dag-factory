@@ -158,6 +158,17 @@ class AirbyteGenerator:
             f"Airbyte error: there are no destinations for id {id}"
         )
 
+    def _get_airbyte_source(self, sourceId):
+        """
+        Get the complete Source object from it's ID
+        """
+        for source in self.airbyte_api_caller.airbyte_sources_list:
+            if source["sourceId"] == sourceId:
+                return source
+        raise AirbyteGeneratorException(
+            f"Airbyte extract error: there is no Airbyte Source for id [red]{sourceId}[/red]"
+        )
+
     def _get_airbyte_source_name(self, id):
         """
         Given a source id, returns it's name
@@ -170,17 +181,44 @@ class AirbyteGenerator:
             f"Airbyte error: there are no sources for id {id}"
         )
 
-    def _get_airbyte_connection_for_table(self, table):
+    def _get_airbyte_connection_for_table(self, db, schema, table):
         """
         Given a table name, returns the corresponding airbyte connection
         """
 
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
-                if stream["stream"]["name"].lower() == table.replace(
-                    self.AIRBYTE_DESTINATION_TABLE_PREFIX, ""
-                ):
-                    return conn
+                if stream["stream"]["name"].lower() == table:
+                    namespace_definition = conn["namespaceDefinition"]
+
+                    if namespace_definition == "source" or (
+                        conn["namespaceDefinition"] == "customformat"
+                        and conn["namespaceFormat"] == "${SOURCE_NAMESPACE}"
+                    ):
+                        source = self._get_airbyte_source(conn["sourceId"])
+                        if "database" in source["connectionConfiguration"]:
+                            if (
+                                source["connectionConfiguration"]["database"].lower()
+                                == db
+                            ):
+                                return conn
+                        else:
+                            return conn
+                    elif namespace_definition == "destination":
+                        # compare destination-schema with arg-schema
+                        destination = self._get_airbyte_destination(
+                            conn["destinationId"]
+                        )
+                        if (
+                            destination["connectionConfiguration"]["schema"].lower()
+                            == schema
+                        ):
+                            return conn
+
+                    else:
+                        if namespace_definition == "customformat":
+                            if conn["namespaceFormat"] == schema:
+                                return conn
         raise AirbyteGeneratorException(
             f"Airbyte error: there are no connections for table {table}"
         )
@@ -262,7 +300,9 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             source_schema = manifest_json["sources"][source]["schema"].lower()
             source_table = manifest_json["sources"][source]["identifier"].lower()
 
-            conn = self._get_airbyte_connection_for_table(source_table)
+            conn = self._get_airbyte_connection_for_table(
+                source_db, source_schema, source_table
+            )
             destination_config = self._get_airbyte_destination(conn["destinationId"])
             schema = destination_config["schema"].lower()
             if conn["namespaceDefinition"] == "customformat":

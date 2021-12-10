@@ -25,13 +25,13 @@ example_dag2:
     airbyte_generator:
       generator: dagfactory.AirbyteGenerator
       airflow_connection_id: airbyte_conn_example
-      connections_ids: 
-        - ae731fab-7df7-4e35-8567-1beb81ef7dc4
-        - e4266d84-87ee-469f-91d4-f1d5b5993b73
-        - e4266d84-87ee-469f-91d4-f1d5b5993b7334
+      connections_ids:
+        - 2302e2d0-fec9-4e3a-a48d-06f48c2c53cf
+        - 203eeb5d-0303-4fec-b80e-e744a4443922
+        - 3e976bcc-275e-4b9a-9e97-e0fef3ac772e
       task_group_name: extract_and_load
     # airbyte_dbt:
-    #   generator: dagfactory.AirbyteDbtGenerator 
+    #   generator: dagfactory.AirbyteDbtGenerator
     #   dbt_project_path: /app/dbt
     #   dbt_selector:
     #   airflow_connection_id: airbyte_conn_example
