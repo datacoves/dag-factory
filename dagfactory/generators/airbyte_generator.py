@@ -256,7 +256,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         # This is the folder to copy project to before running dbt
         deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
-        run_dbt_compile = params.pop("run_dbt_compile", True)
+        run_dbt_compile = params.pop("run_dbt_compile", False)
 
         cwd = dbt_project_path
         if deploy_path:
@@ -275,7 +275,9 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
 
         if run_dbt_compile:
-            subprocess.run(["dbt", "compile"], check=True, cwd=cwd)
+            subprocess.run(
+                ["dbt", "compile"] + dbt_list_args.split(), check=True, cwd=cwd
+            )
 
         # Call DBT on the specified path
         process = subprocess.run(
