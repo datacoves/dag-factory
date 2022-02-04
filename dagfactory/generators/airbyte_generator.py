@@ -210,7 +210,9 @@ class AirbyteGenerator:
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
                 # look for the table
-                if stream["stream"]["name"].lower() == table:
+                if stream["stream"]["name"].lower() == table.lower().replace(
+                    "_airbyte_raw_", ""
+                ):
                     destination_config = self._get_airbyte_destination(
                         conn["destinationId"]
                     )
@@ -218,7 +220,7 @@ class AirbyteGenerator:
                     if db == destination_config["database"].lower():
                         airbyte_schema = self._get_connection_schema(
                             conn, destination_config
-                        )
+                        ).lower()
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
                             return conn
@@ -307,7 +309,9 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             source_table = manifest_json["sources"][source]["identifier"].lower()
 
             conn = self._get_airbyte_connection(source_db, source_schema, source_table)
-            connections_ids.append(conn["connectionId"])
+            
+            if conn['connectionId'] not in connections_ids:
+                connections_ids.append(conn["connectionId"])
 
         params["connections_ids"] = connections_ids
 
