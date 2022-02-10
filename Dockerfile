@@ -38,6 +38,7 @@ RUN mkdir -p /root/airflow/dags
 
 ADD . /app
 ADD examples/salesforce.py /root/airflow/dags/salesforce.py
+ADD examples/tutorial.py /root/airflow/dags/tutorial.py
 
 WORKDIR /app
 RUN pip install -e .

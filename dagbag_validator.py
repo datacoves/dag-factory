@@ -1,23 +1,29 @@
-import unittest, os
+import glob
 from airflow.models import DagBag
+from socket import gaierror
+
+dagbag = DagBag(include_examples=False)
+
+import ipdb  # TODO ipdb import
+
+ipdb.set_trace()  # TODO remove trace()
+
+# for dag_file in glob.glob(os.environ.get("AIRFLOW__CORE__DAGS_FOLDER")):
+for dag_file in glob.glob("/root/airflow/dags/*.py"):
+    try:
+        dagbag.process_file(dag_file)
+
+    except gaierror:
+        import ipdb  # TODO ipdb import
+
+        ipdb.set_trace()  # TODO remove trace()
+        pass
+
+if dagbag.import_errors:
+    print("The following DAGs present import errors:")
+    for error in dagbag.import_errors:
+        print(error)
+    print("Review the stack above for details")
 
 
-class TestDagIntegrity(unittest.TestCase):
-
-    LOAD_SECOND_THRESHOLD = 2
-
-    def setUp(self):
-        self.dagbag = DagBag(dag_folder=os.environ.get("AIRFLOW__CORE__DAGS_FOLDER"))
-        print(f"Validating the following DAGs:")
-        print(*self.dagbag.dags)
-
-    def test_import_dags(self):
-        self.assertFalse(
-            len(self.dagbag.import_errors),
-            "DAG import failures. Errors: {}".format(self.dagbag.import_errors),
-        )
-
-
-test_dag = TestDagIntegrity()
-suite = unittest.TestLoader().loadTestsFromTestCase(test_dag)
-unittest.TextTestRunner(verbosity=2).run(suite)
+assert len(dagbag.import_errors) == 0
