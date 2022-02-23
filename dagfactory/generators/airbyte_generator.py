@@ -260,6 +260,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", False)
 
+        dbt_project_path = Path(dbt_project_path).absolute()
         cwd = dbt_project_path
         if deploy_path:
             commit = subprocess.run(
