@@ -4,8 +4,6 @@ import subprocess, requests, json
 from slugify import slugify
 from pathlib import Path
 from airflow.models import BaseOperator
-from airflow.models.base import Base
-from airflow.utils.dates import days_ago
 from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
 from airflow.hooks.base import BaseHook
 from requests.exceptions import RequestException
@@ -68,9 +66,7 @@ class AirbyteGenerator:
         )["sources"]
 
     def airbyte_api_call(self, endpoint: str, body: Dict[str, str] = None):
-        """
-        Generic `api caller` for contacting Airbyte
-        """
+        """Generic `api caller` for contacting Airbyte"""
         try:
             response = requests.post(endpoint, json=body)
 
@@ -135,56 +131,37 @@ class AirbyteGenerator:
         return tasks
 
     def _get_airbyte_destination(self, id):
-        """
-        Given a destination id, returns the destination payload
-        """
-
+        """Given a destination id, returns the destination payload"""
         for destination in self.airbyte_destinations:
             if destination["destinationId"] == id:
-                return destination["connectionConfiguration"]
+                return destination
         raise AirbyteGeneratorException(
             f"Airbyte error: there are no destinations for id {id}"
         )
+
+    def _get_airbyte_destination_config(self, id):
+        """Given a destination id, returns the destination payload"""
+        return self._get_airbyte_destination(id)["connectionConfiguration"]
 
     def _get_airbyte_destination_name(self, id):
-        """
-        Given a destination id, returns it's name
-        """
+        """Given a destination id, returns it's name"""
+        return self._get_airbyte_destination(id)["name"]
 
-        for destination in self.airbyte_destinations:
-            if destination["destinationId"] == id:
-                return destination["name"]
-        raise AirbyteGeneratorException(
-            f"Airbyte error: there are no destinations for id {id}"
-        )
-
-    def _get_airbyte_source(self, sourceId):
-        """
-        Get the complete Source object from it's ID
-        """
-        for source in self.airbyte_api_caller.airbyte_sources_list:
-            if source["sourceId"] == sourceId:
+    def _get_airbyte_source(self, id):
+        """Get the complete Source object from it's ID"""
+        for source in self.airbyte_sources:
+            if source["sourceId"] == id:
                 return source
         raise AirbyteGeneratorException(
-            f"Airbyte extract error: there is no Airbyte Source for id [red]{sourceId}[/red]"
+            f"Airbyte extract error: there is no Airbyte Source for id [red]{id}[/red]"
         )
 
     def _get_airbyte_source_name(self, id):
-        """
-        Given a source id, returns it's name
-        """
-
-        for source in self.airbyte_sources:
-            if source["sourceId"] == id:
-                return source["name"]
-        raise AirbyteGeneratorException(
-            f"Airbyte error: there are no sources for id {id}"
-        )
+        """Given a source id, returns it's name"""
+        return self._get_airbyte_source(id)["name"]
 
     def _get_connection_schema(self, conn, destination_config):
-        """
-        Given an airybte connection, returns a schema name
-        """
+        """Given an airybte connection, returns a schema name"""
         namespace_definition = conn["namespaceDefinition"]
 
         if namespace_definition == "source" or (
@@ -213,7 +190,7 @@ class AirbyteGenerator:
                 if stream["stream"]["name"].lower() == table.lower().replace(
                     "_airbyte_raw_", ""
                 ):
-                    destination_config = self._get_airbyte_destination(
+                    destination_config = self._get_airbyte_destination_config(
                         conn["destinationId"]
                     )
                     # match database
