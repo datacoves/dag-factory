@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from datetime import datetime, timedelta
+from os import environ
 import subprocess, requests, json
 from slugify import slugify
 from pathlib import Path
@@ -260,7 +260,13 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", False)
 
-        dbt_project_path = Path(dbt_project_path).absolute()
+        if Path(dbt_project_path).is_absolute():
+            dbt_project_path = Path(dbt_project_path)
+        else:
+            dbt_project_path = (
+                Path(environ.get("DATACOVES__REPO_PATH", "/opt/airflow/dags/repo"))
+                / dbt_project_path
+            )
         cwd = dbt_project_path
         if deploy_path:
             commit = subprocess.run(
@@ -310,8 +316,8 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             source_table = manifest_json["sources"][source]["identifier"].lower()
 
             conn = self._get_airbyte_connection(source_db, source_schema, source_table)
-            
-            if conn['connectionId'] not in connections_ids:
+
+            if conn["connectionId"] not in connections_ids:
                 connections_ids.append(conn["connectionId"])
 
         params["connections_ids"] = connections_ids
