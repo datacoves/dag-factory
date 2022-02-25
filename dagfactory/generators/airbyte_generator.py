@@ -12,7 +12,6 @@ from requests.exceptions import RequestException
 TEST_MODE = bool(environ.get("TEST_MODE"))
 
 
-
 class AirbyteGeneratorException(Exception):
     pass
 
@@ -50,8 +49,7 @@ class AirbyteGenerator:
         )
         airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
             entity="sources"
-        )        
-        
+        )
 
         if TEST_MODE:
             self.airbyte_connections = []
@@ -141,7 +139,7 @@ class AirbyteGenerator:
             )
 
         return tasks
-        
+
     def _get_airbyte_destination(self, id):
         """Given a destination id, returns the destination payload"""
         for destination in self.airbyte_destinations:
@@ -195,7 +193,7 @@ class AirbyteGenerator:
         """
         Given a table name, schema and db, returns the corresponding airbyte connection
         """
-        
+
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
                 # look for the table
@@ -307,7 +305,7 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             conn = self._get_airbyte_connection(source_db, source_schema, source_table)
 
             if conn and conn["connectionId"] not in connections_ids:
-                connections_ids.append(conn["connectionId"])            
+                connections_ids.append(conn["connectionId"])
 
         params["connections_ids"] = connections_ids
 
