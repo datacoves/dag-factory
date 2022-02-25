@@ -177,7 +177,7 @@ class AirbyteGenerator:
             return destination_config["connectionConfiguration"]["schema"].lower()
         else:
             if namespace_definition == "customformat":
-                return conn["namespaceFormat"]
+                return conn["namespaceFormat"].lower()
 
     def _get_airbyte_connection(self, db, schema, table):
         """
@@ -197,7 +197,7 @@ class AirbyteGenerator:
                     if db == destination_config["database"].lower():
                         airbyte_schema = self._get_connection_schema(
                             conn, destination_config
-                        ).lower()
+                        )
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
                             return conn
