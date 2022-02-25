@@ -9,6 +9,10 @@ from airflow.hooks.base import BaseHook
 from requests.exceptions import RequestException
 
 
+TEST_MODE = bool(environ.get("TEST_MODE"))
+
+
+
 class AirbyteGeneratorException(Exception):
     pass
 
@@ -46,24 +50,32 @@ class AirbyteGenerator:
         )
         airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
             entity="sources"
-        )
+        )        
+        
 
-        self.airbyte_workspace_id = self.airbyte_api_call(
-            airbyte_api_endpoint_list_workspaces,
-        )["workspaces"][0]["workspaceId"]
-        self.airbyte_api_standard_req_body = {"workspaceId": self.airbyte_workspace_id}
-        self.airbyte_connections = self.airbyte_api_call(
-            airbyte_api_endpoint_list_connections,
-            self.airbyte_api_standard_req_body,
-        )["connections"]
-        self.airbyte_destinations = self.airbyte_api_call(
-            airbyte_api_endpoint_list_destinations,
-            self.airbyte_api_standard_req_body,
-        )["destinations"]
-        self.airbyte_sources = self.airbyte_api_call(
-            airbyte_api_endpoint_list_sources,
-            self.airbyte_api_standard_req_body,
-        )["sources"]
+        if TEST_MODE:
+            self.airbyte_connections = []
+            self.connections_should_exist = False
+        else:
+            self.airbyte_workspace_id = self.airbyte_api_call(
+                airbyte_api_endpoint_list_workspaces,
+            )["workspaces"][0]["workspaceId"]
+            self.airbyte_api_standard_req_body = {
+                "workspaceId": self.airbyte_workspace_id
+            }
+            self.airbyte_connections = self.airbyte_api_call(
+                airbyte_api_endpoint_list_connections,
+                self.airbyte_api_standard_req_body,
+            )["connections"]
+            self.airbyte_destinations = self.airbyte_api_call(
+                airbyte_api_endpoint_list_destinations,
+                self.airbyte_api_standard_req_body,
+            )["destinations"]
+            self.airbyte_sources = self.airbyte_api_call(
+                airbyte_api_endpoint_list_sources,
+                self.airbyte_api_standard_req_body,
+            )["sources"]
+            self.connections_should_exist = True
 
     def airbyte_api_call(self, endpoint: str, body: Dict[str, str] = None):
         """Generic `api caller` for contacting Airbyte"""
@@ -129,7 +141,7 @@ class AirbyteGenerator:
             )
 
         return tasks
-
+        
     def _get_airbyte_destination(self, id):
         """Given a destination id, returns the destination payload"""
         for destination in self.airbyte_destinations:
@@ -183,7 +195,7 @@ class AirbyteGenerator:
         """
         Given a table name, schema and db, returns the corresponding airbyte connection
         """
-
+        
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
                 # look for the table
@@ -201,10 +213,10 @@ class AirbyteGenerator:
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
                             return conn
-
-        raise AirbyteGeneratorException(
-            f"Airbyte error: there are no connections for table {table}"
-        )
+        if self.connections_should_exist:
+            raise AirbyteGeneratorException(
+                f"Airbyte error: there are no connections for table {table}"
+            )
 
     def _create_airbyte_connection_name_for_id(self, conn_id):
         """
@@ -294,8 +306,8 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
             conn = self._get_airbyte_connection(source_db, source_schema, source_table)
 
-            if conn["connectionId"] not in connections_ids:
-                connections_ids.append(conn["connectionId"])
+            if conn and conn["connectionId"] not in connections_ids:
+                connections_ids.append(conn["connectionId"])            
 
         params["connections_ids"] = connections_ids
 
