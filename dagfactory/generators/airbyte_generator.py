@@ -195,12 +195,13 @@ class AirbyteGenerator:
         Given a table name, schema and db, returns the corresponding airbyte connection
         """
 
+        airbyte_tables = []
         for conn in self.airbyte_connections:
             for stream in conn["syncCatalog"]["streams"]:
                 # look for the table
-                if stream["stream"]["name"].lower() == table.replace(
-                    "_airbyte_raw_", ""
-                ):
+                airbyte_table = stream["stream"]["name"].lower()
+                airbyte_tables.append(airbyte_table)
+                if airbyte_table == table.replace("_airbyte_raw_", ""):
                     destination_config = self._get_airbyte_destination_config(
                         conn["destinationId"]
                     )
@@ -214,7 +215,8 @@ class AirbyteGenerator:
                             return conn
         if self.connections_should_exist:
             raise AirbyteGeneratorException(
-                f"Airbyte error: there are no connections for table {table}"
+                f"Airbyte error: there are no connections for table {db}.{schema}.{table}. "
+                f"Tables checked: {', '.join(airbyte_tables)}"
             )
 
     def _create_airbyte_connection_name_for_id(self, conn_id):
