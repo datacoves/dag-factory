@@ -28,33 +28,34 @@ class AirbyteGenerator:
 
         try:
             airbyte_connection_name = params["airflow_connection_id"]
-            airbyte_connection = BaseHook.get_connection(airbyte_connection_name)
+
         except KeyError:
             raise AirbyteGeneratorException(
                 "`airflow_connection_id` is missing in DAG's configuration YAML file"
             )
 
-        airbyte_api_url = (
-            f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
-        )
-        airbyte_api_endpoint_list_entity = airbyte_api_url + "{entity}/list"
-        airbyte_api_endpoint_list_workspaces = airbyte_api_endpoint_list_entity.format(
-            entity="workspaces"
-        )
-        airbyte_api_endpoint_list_connections = airbyte_api_endpoint_list_entity.format(
-            entity="connections"
-        )
-        airbyte_api_endpoint_list_destinations = (
-            airbyte_api_endpoint_list_entity.format(entity="destinations")
-        )
-        airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
-            entity="sources"
-        )
-
         if TEST_MODE:
             self.airbyte_connections = []
             self.connections_should_exist = False
         else:
+            airbyte_connection = BaseHook.get_connection(airbyte_connection_name)
+
+            airbyte_api_url = (
+                f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
+            )
+            airbyte_api_endpoint_list_entity = airbyte_api_url + "{entity}/list"
+            airbyte_api_endpoint_list_workspaces = (
+                airbyte_api_endpoint_list_entity.format(entity="workspaces")
+            )
+            airbyte_api_endpoint_list_connections = (
+                airbyte_api_endpoint_list_entity.format(entity="connections")
+            )
+            airbyte_api_endpoint_list_destinations = (
+                airbyte_api_endpoint_list_entity.format(entity="destinations")
+            )
+            airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
+                entity="sources"
+            )
             self.airbyte_workspace_id = self.airbyte_api_call(
                 airbyte_api_endpoint_list_workspaces,
             )["workspaces"][0]["workspaceId"]
