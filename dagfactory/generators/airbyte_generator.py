@@ -150,14 +150,6 @@ class AirbyteGenerator:
             f"Airbyte error: there are no destinations for id {id}"
         )
 
-    def _get_airbyte_destination_config(self, id):
-        """Given a destination id, returns the destination payload"""
-        return self._get_airbyte_destination(id)["connectionConfiguration"]
-
-    def _get_airbyte_destination_name(self, id):
-        """Given a destination id, returns it's name"""
-        return self._get_airbyte_destination(id)["name"]
-
     def _get_airbyte_source(self, id):
         """Get the complete Source object from it's ID"""
         for source in self.airbyte_sources:
@@ -166,10 +158,6 @@ class AirbyteGenerator:
         raise AirbyteGeneratorException(
             f"Airbyte extract error: there is no Airbyte Source for id [red]{id}[/red]"
         )
-
-    def _get_airbyte_source_name(self, id):
-        """Given a source id, returns it's name"""
-        return self._get_airbyte_source(id)["name"]
 
     def _get_connection_schema(self, conn, destination_config):
         """Given an airybte connection, returns a schema name"""
@@ -185,7 +173,7 @@ class AirbyteGenerator:
             else:
                 return None
         elif namespace_definition == "destination":
-            return destination_config["connectionConfiguration"]["schema"].lower()
+            return destination_config["schema"].lower()
         else:
             if namespace_definition == "customformat":
                 return conn["namespaceFormat"].lower()
@@ -202,9 +190,10 @@ class AirbyteGenerator:
                 airbyte_table = stream["stream"]["name"].lower()
                 airbyte_tables.append(airbyte_table)
                 if airbyte_table == table.replace("_airbyte_raw_", ""):
-                    destination_config = self._get_airbyte_destination_config(
+                    destination_config = self._get_airbyte_destination(
                         conn["destinationId"]
-                    )
+                    )["connectionConfiguration"]
+
                     # match database
                     if db == destination_config["database"].lower():
                         airbyte_schema = self._get_connection_schema(
@@ -225,10 +214,10 @@ class AirbyteGenerator:
         """
         for conn in self.airbyte_connections:
             if conn["connectionId"] == conn_id:
-                source_name = self._get_airbyte_source_name(conn["sourceId"])
-                destination_name = self._get_airbyte_destination_name(
-                    conn["destinationId"]
-                )
+                source_name = self._get_airbyte_source(conn["sourceId"])["name"]
+                destination_name = self._get_airbyte_destination(conn["destinationId"])[
+                    "name"
+                ]
                 return slugify(f"{source_name} → {destination_name}")
 
         raise AirbyteGeneratorException(
