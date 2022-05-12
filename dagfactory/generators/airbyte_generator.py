@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from os import environ
-import subprocess, requests, json
+import shlex, subprocess, requests, json
 from slugify import slugify
 from pathlib import Path
 from airflow.models import BaseOperator
@@ -230,6 +230,9 @@ class AirbyteDbtGeneratorException(Exception):
 
 
 class AirbyteDbtGenerator(AirbyteGenerator):
+    def get_bash_command(self, virtualenv_path, command):
+        return shlex.split(f"/bin/bash -c 'source {virtualenv_path} && {command}'")
+
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
         DAG_GENERATION_TIMEOUT = 300  # 5 minutes
         dbt_project_path = params.pop("dbt_project_path")
@@ -238,6 +241,9 @@ class AirbyteDbtGenerator(AirbyteGenerator):
         deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", False)
+        virtualenv_path = params.pop("virtualenv_path", None)
+        if virtualenv_path:
+            virtualenv_path = Path(f"{virtualenv_path}/bin/activate").absolute()
 
         if Path(dbt_project_path).is_absolute():
             dbt_project_path = Path(dbt_project_path)
@@ -260,21 +266,45 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             cwd = deploy_path
 
         if run_dbt_deps:
-            subprocess.run(["dbt", "deps"], check=True, cwd=cwd)
+            if virtualenv_path:
+                command = self.get_bash_command(virtualenv_path, "dbt deps")
+            else:
+                command = ["dbt", "deps"]
+            subprocess.run(command, check=True, cwd=cwd)
 
         if run_dbt_compile:
-            subprocess.run(
-                ["dbt", "compile"] + dbt_list_args.split(), check=True, cwd=cwd
-            )
+            if virtualenv_path:
+                command = self.get_bash_command(
+                    virtualenv_path, f"dbt compile {dbt_list_args}"
+                )
+            else:
+                command = ["dbt", "compile"] + dbt_list_args.split()
+            subprocess.run(command, check=True, cwd=cwd)
 
-        # Call DBT on the specified path
-        process = subprocess.run(
-            ["dbt", "ls", "--resource-type", "source"] + dbt_list_args.split(),
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-        )
+        if virtualenv_path:
+            command = self.get_bash_command(
+                virtualenv_path, f"dbt ls --resource-type source {dbt_list_args}"
+            )
+        else:
+            command = [
+                "dbt",
+                "ls",
+                "--resource-type",
+                "source",
+            ] + dbt_list_args.split()
+        try:
+            process = subprocess.run(
+                command,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            stdout = process.stdout.decode()
+        except subprocess.CalledProcessError as e:
+            raise AirbyteDbtGeneratorException(
+                f"Exception ocurred running 'dbt ls': {e}"
+            )
         stdout = process.stdout.decode()
 
         sources_list = [
@@ -288,7 +318,6 @@ class AirbyteDbtGenerator(AirbyteGenerator):
 
         connections_ids = []
         for source in sources_list:
-
             # Transform the 'dbt source' into [db, schema, table]
             source_db = manifest_json["sources"][source]["database"].lower()
             source_schema = manifest_json["sources"][source]["schema"].lower()

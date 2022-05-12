@@ -1,6 +1,6 @@
-FROM python:3.6-slim
+FROM python:3.8
 
-ARG AIRFLOW_VERSION=2.2.1
+ARG AIRFLOW_VERSION=2.3.0
 ARG AIRFLOW_HOME=/usr/local/airflow
 ENV SLUGIFY_USES_TEXT_UNIDECODE=yes
 
@@ -33,7 +33,13 @@ RUN set -ex \
     /usr/share/doc \
     /usr/share/doc-base
 
-RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb dbt wtforms==2.3.3
+
+RUN python -m venv /dbt_env
+COPY requirements.txt .
+RUN /dbt_env/bin/pip install -U pip
+RUN /dbt_env/bin/pip install -r requirements.txt
+
+RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms==2.3.3
 RUN mkdir -p /root/airflow/dags
 
 ADD . /app
