@@ -1,6 +1,6 @@
 FROM python:3.8
 
-ARG AIRFLOW_VERSION=2.3.0
+ARG AIRFLOW_VERSION=2.2.3
 ARG AIRFLOW_HOME=/usr/local/airflow
 ENV SLUGIFY_USES_TEXT_UNIDECODE=yes
 
@@ -34,10 +34,10 @@ RUN set -ex \
     /usr/share/doc-base
 
 
-RUN python -m venv /dbt_env
+RUN python -m venv ~/.virtualenvs/datacoves
 COPY requirements.txt .
-RUN /dbt_env/bin/pip install -U pip
-RUN /dbt_env/bin/pip install -r requirements.txt
+RUN ~/.virtualenvs/datacoves/bin/pip install -U pip
+RUN ~/.virtualenvs/datacoves/bin/pip install -r requirements.txt
 
 RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms==2.3.3
 RUN mkdir -p /root/airflow/dags
