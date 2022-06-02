@@ -1,6 +1,6 @@
 FROM python:3.8
 
-ARG AIRFLOW_VERSION=2.2.3
+ARG AIRFLOW_VERSION=2.3.1
 ARG AIRFLOW_HOME=/usr/local/airflow
 ENV SLUGIFY_USES_TEXT_UNIDECODE=yes
 
@@ -39,7 +39,7 @@ COPY requirements.txt .
 RUN ~/.virtualenvs/datacoves/bin/pip install -U pip
 RUN ~/.virtualenvs/datacoves/bin/pip install -r requirements.txt
 
-RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms==2.3.3
+RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms
 RUN mkdir -p /root/airflow/dags
 
 ADD . /app
