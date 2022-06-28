@@ -11,6 +11,7 @@ from airflow.models import Variable
 from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
 from airflow.models import BaseOperator
 from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash_operator import BashOperator
 from airflow.utils.module_loading import import_string
 from airflow import __version__ as AIRFLOW_VERSION
 
@@ -27,7 +28,7 @@ except ImportError:
     from airflow.contrib.kubernetes.volume_mount import VolumeMount
     from airflow.contrib.kubernetes.volume import Volume
     from airflow.contrib.kubernetes.pod_runtime_info_env import PodRuntimeInfoEnv
-from kubernetes.client.models import V1Pod, V1Container
+from kubernetes.client.models import V1Pod, V1Container, V1PodSpec
 from packaging import version
 
 from dagfactory import utils
@@ -245,6 +246,16 @@ class DagBuilder:
                             variable["variable"], default_var=None
                         )
                 del task_params["variables_as_arguments"]
+
+            if utils.check_dict_key(task_params, "container_spec"):
+                task_params["executor_config"] = {
+                    "pod_override": V1Pod(
+                        spec=V1PodSpec(
+                            containers=[V1Container(**task_params["container_spec"])]
+                        )
+                    )
+                }
+                del task_params["container_image"]
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
