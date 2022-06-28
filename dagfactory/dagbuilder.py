@@ -254,7 +254,7 @@ class DagBuilder:
                         )
                     )
                 }
-                del task_params["container_image"]
+                del task_params["container_spec"]
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
