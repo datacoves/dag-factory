@@ -11,7 +11,6 @@ from airflow.models import Variable
 from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
 from airflow.models import BaseOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.bash_operator import BashOperator
 from airflow.utils.module_loading import import_string
 from airflow import __version__ as AIRFLOW_VERSION
 
