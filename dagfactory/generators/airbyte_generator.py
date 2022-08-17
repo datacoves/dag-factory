@@ -307,9 +307,11 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             )
         stdout = process.stdout.decode()
 
-        sources_list = [
-            src.replace("source:", "source.") for src in stdout.split("\n") if src
-        ]
+        sources_list = []
+        if "No nodes selected" not in stdout:
+            sources_list = [
+                src.replace("source:", "source.") for src in stdout.split("\n") if src
+            ]
 
         manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
 
