@@ -1,13 +1,16 @@
-from typing import Any, Dict
+import json
+import shlex
+import subprocess
 from os import environ
-import shlex, subprocess, requests, json
-from slugify import slugify
 from pathlib import Path
+from typing import Any, Dict
+
+import requests
+from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
 from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
-from airflow.hooks.base import BaseHook
 from requests.exceptions import RequestException
-
+from slugify import slugify
 
 TEST_MODE = bool(environ.get("TEST_MODE"))
 
@@ -20,9 +23,7 @@ class AirbyteGenerator:
     def __init__(self, dag_builder, params):
         self.dag_builder = dag_builder
         self.AIRFLOW_OPERATOR_FULL_PATH = (
-            AirbyteTriggerSyncOperator.__module__
-            + "."
-            + AirbyteTriggerSyncOperator.__qualname__
+            AirbyteTriggerSyncOperator.__module__ + "." + AirbyteTriggerSyncOperator.__qualname__
         )
         self.AIRBYTE_DESTINATION_TABLE_PREFIX = "_airbyte_raw_"
 
@@ -40,18 +41,16 @@ class AirbyteGenerator:
         else:
             airbyte_connection = BaseHook.get_connection(airbyte_connection_name)
 
-            airbyte_api_url = (
-                f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
-            )
+            airbyte_api_url = f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
             airbyte_api_endpoint_list_entity = airbyte_api_url + "{entity}/list"
-            airbyte_api_endpoint_list_workspaces = (
-                airbyte_api_endpoint_list_entity.format(entity="workspaces")
+            airbyte_api_endpoint_list_workspaces = airbyte_api_endpoint_list_entity.format(
+                entity="workspaces"
             )
-            airbyte_api_endpoint_list_connections = (
-                airbyte_api_endpoint_list_entity.format(entity="connections")
+            airbyte_api_endpoint_list_connections = airbyte_api_endpoint_list_entity.format(
+                entity="connections"
             )
-            airbyte_api_endpoint_list_destinations = (
-                airbyte_api_endpoint_list_entity.format(entity="destinations")
+            airbyte_api_endpoint_list_destinations = airbyte_api_endpoint_list_entity.format(
+                entity="destinations"
             )
             airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
                 entity="sources"
@@ -59,9 +58,7 @@ class AirbyteGenerator:
             self.airbyte_workspace_id = self.airbyte_api_call(
                 airbyte_api_endpoint_list_workspaces,
             )["workspaces"][0]["workspaceId"]
-            self.airbyte_api_standard_req_body = {
-                "workspaceId": self.airbyte_workspace_id
-            }
+            self.airbyte_api_standard_req_body = {"workspaceId": self.airbyte_workspace_id}
             self.airbyte_connections = self.airbyte_api_call(
                 airbyte_api_endpoint_list_connections,
                 self.airbyte_api_standard_req_body,
@@ -90,9 +87,7 @@ class AirbyteGenerator:
         except RequestException as e:
             raise AirbyteGeneratorException("Airbyte API error: " + e)
 
-    def generate_sync_task(
-        self, params: Dict[str, Any], operator: str
-    ) -> Dict[str, Any]:
+    def generate_sync_task(self, params: Dict[str, Any], operator: str) -> Dict[str, Any]:
         """
         Standard Airflow call to `make_task`
             same logic as dagbuilder.py:
@@ -113,8 +108,7 @@ class AirbyteGenerator:
         return [
             c_id
             for c_id in connections_ids
-            if c_id
-            in [connection["connectionId"] for connection in self.airbyte_connections]
+            if c_id in [connection["connectionId"] for connection in self.airbyte_connections]
         ]
 
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,9 +129,7 @@ class AirbyteGenerator:
             task_id = self._create_airbyte_connection_name_for_id(conn_id)
             params["task_id"] = task_id
             params["connection_id"] = conn_id
-            tasks[task_id] = self.generate_sync_task(
-                params, self.AIRFLOW_OPERATOR_FULL_PATH
-            )
+            tasks[task_id] = self.generate_sync_task(params, self.AIRFLOW_OPERATOR_FULL_PATH)
 
         return tasks
 
@@ -146,9 +138,7 @@ class AirbyteGenerator:
         for destination in self.airbyte_destinations:
             if destination["destinationId"] == id:
                 return destination
-        raise AirbyteGeneratorException(
-            f"Airbyte error: there are no destinations for id {id}"
-        )
+        raise AirbyteGeneratorException(f"Airbyte error: there are no destinations for id {id}")
 
     def _get_airbyte_source(self, id):
         """Get the complete Source object from it's ID"""
@@ -190,15 +180,13 @@ class AirbyteGenerator:
                 airbyte_table = stream["stream"]["name"].lower()
                 airbyte_tables.append(airbyte_table)
                 if airbyte_table == table.replace("_airbyte_raw_", ""):
-                    destination_config = self._get_airbyte_destination(
-                        conn["destinationId"]
-                    )["connectionConfiguration"]
+                    destination_config = self._get_airbyte_destination(conn["destinationId"])[
+                        "connectionConfiguration"
+                    ]
 
                     # match database
                     if db == destination_config["database"].lower():
-                        airbyte_schema = self._get_connection_schema(
-                            conn, destination_config
-                        )
+                        airbyte_schema = self._get_connection_schema(conn, destination_config)
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
                             return conn
@@ -215,9 +203,7 @@ class AirbyteGenerator:
         for conn in self.airbyte_connections:
             if conn["connectionId"] == conn_id:
                 source_name = self._get_airbyte_source(conn["sourceId"])["name"]
-                destination_name = self._get_airbyte_destination(conn["destinationId"])[
-                    "name"
-                ]
+                destination_name = self._get_airbyte_destination(conn["destinationId"])["name"]
                 return slugify(f"{source_name} → {destination_name}")
 
         raise AirbyteGeneratorException(
@@ -265,34 +251,47 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             subprocess.run(["cp", "-rf", dbt_project_path, deploy_path], check=True)
             cwd = deploy_path
 
-        if run_dbt_deps:
-            if virtualenv_path:
-                command = self.get_bash_command(virtualenv_path, "dbt deps")
-            else:
-                command = ["dbt", "deps"]
-            subprocess.run(command, check=True, cwd=cwd)
+        try:
+            if run_dbt_deps:
+                if virtualenv_path:
+                    command = self.get_bash_command(virtualenv_path, "dbt deps")
+                else:
+                    command = ["dbt", "deps"]
+                subprocess.run(
+                    command,
+                    check=True,
+                    cwd=cwd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
-        if run_dbt_compile:
+            if run_dbt_compile:
+                if virtualenv_path:
+                    command = self.get_bash_command(
+                        virtualenv_path, f"dbt compile {dbt_list_args}"
+                    )
+                else:
+                    command = ["dbt", "compile"] + dbt_list_args.split()
+                subprocess.run(
+                    command,
+                    check=True,
+                    cwd=cwd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+
             if virtualenv_path:
                 command = self.get_bash_command(
-                    virtualenv_path, f"dbt compile {dbt_list_args}"
+                    virtualenv_path, f"dbt ls --resource-type source {dbt_list_args}"
                 )
             else:
-                command = ["dbt", "compile"] + dbt_list_args.split()
-            subprocess.run(command, check=True, cwd=cwd)
+                command = [
+                    "dbt",
+                    "ls",
+                    "--resource-type",
+                    "source",
+                ] + dbt_list_args.split()
 
-        if virtualenv_path:
-            command = self.get_bash_command(
-                virtualenv_path, f"dbt ls --resource-type source {dbt_list_args}"
-            )
-        else:
-            command = [
-                "dbt",
-                "ls",
-                "--resource-type",
-                "source",
-            ] + dbt_list_args.split()
-        try:
             process = subprocess.run(
                 command,
                 cwd=cwd,
@@ -302,15 +301,21 @@ class AirbyteDbtGenerator(AirbyteGenerator):
             )
             stdout = process.stdout.decode()
         except subprocess.CalledProcessError as e:
+            error_message = ""
+            if e.stdout:
+                error_message += f"{e.stdout.decode()}\n"
+            if e.stderr:
+                error_message += f"{e.stderr.decode()}"
             raise AirbyteDbtGeneratorException(
-                f"Exception ocurred running 'dbt ls': {e}"
+                f"Exception ocurred running {command}\n{error_message}"
             )
-        stdout = process.stdout.decode()
 
         sources_list = []
         if "No nodes selected" not in stdout:
             sources_list = [
-                src.replace("source:", "source.") for src in stdout.split("\n") if src
+                src.replace("source:", "source.")
+                for src in stdout.split("\n")
+                if (src and "source:" in src)
             ]
 
         manifest_json = json.load(open(Path(cwd) / "target" / "manifest.json"))
