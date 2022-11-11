@@ -5,14 +5,13 @@ import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, AnyStr, Dict, Match, Optional, Pattern, Union
+from typing import Any, AnyStr, Dict, Match, Optional, Pattern, Sequence, Union
 
 import pendulum
+from ms_teams_webhook_operator import MSTeamsWebhookOperator
 
 
-def get_datetime(
-    date_value: Union[str, datetime, date], timezone: str = "UTC"
-) -> datetime:
+def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") -> datetime:
     """
     Takes value from DAG config and generates valid datetime. Defaults to
     today, if not a valid date or relative time (1 hours, 1 days, etc.)
@@ -31,9 +30,7 @@ def get_datetime(
     if isinstance(date_value, datetime):
         return date_value.replace(tzinfo=local_tz)
     if isinstance(date_value, date):
-        return datetime.combine(date=date_value, time=datetime.min.time()).replace(
-            tzinfo=local_tz
-        )
+        return datetime.combine(date=date_value, time=datetime.min.time()).replace(tzinfo=local_tz)
     # Try parsing as date string
     try:
         return pendulum.parse(date_value).replace(tzinfo=local_tz)
@@ -80,9 +77,7 @@ def get_time_delta(time_string: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def merge_configs(
-    config: Dict[str, Any], default_config: Dict[str, Any]
-) -> Dict[str, Any]:
+def merge_configs(config: Dict[str, Any], default_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Merges a `default` config with DAG config. Used to set default values
     for a group of DAGs.
@@ -142,3 +137,23 @@ def check_dict_key(item_dict: Dict[str, Any], key: str) -> bool:
     :type: bool
     """
     return bool(key in item_dict and item_dict[key] is not None)
+
+
+def ms_teams_send_logs(context, connection_id):
+    AIRFLOW_URL = os.environ.get("AIRFLOW_URL")
+    dag_id = context["dag_run"].dag_id
+
+    task_id = context["task_instance"].task_id
+    context["task_instance"].xcom_push(key=dag_id, value=True)
+
+    logs_url = f"https://{AIRFLOW_URL}/log?dag_id={dag_id}&task_id={task_id}&execution_date={context['ts']}"
+    ms_teams_notification = MSTeamsWebhookOperator(
+        task_id="msteams_notify_failure",
+        trigger_rule="all_done",
+        message="`{}` has failed on task: `{}`".format(dag_id, task_id),
+        button_text="View log",
+        button_url=logs_url,
+        theme_color="FF0000",
+        http_conn_id=connection_id,
+    )
+    ms_teams_notification.execute(context)

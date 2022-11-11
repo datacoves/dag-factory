@@ -21,15 +21,17 @@ example_dag2:
   task_groups:
     extract_and_load:
       tooltip: "Extract and Load taskgroup"
+  # on_failure_callback_name: send_message
+  # on_failure_callback_file: /root/airflow/callback/microsoft_teams.py
   tasks:
     airbyte_generator:
       generator: dagfactory.AirbyteGenerator
       airflow_connection_id: airbyte_conn_example
       connections_ids:
-        - 2302e2d0-fec9-4e3a-a48d-06f48c2c53cf
-        - 203eeb5d-0303-4fec-b80e-e744a4443922
-        - 3e976bcc-275e-4b9a-9e97-e0fef3ac772e
+        - 8298990f-0cb1-4c1c-b340-93715fe72225
       task_group_name: extract_and_load
+      ms_teams_failure_callback:
+        connection_id: msteams_saas_notifications
     # airbyte_dbt:
     #   generator: dagfactory.AirbyteDbtGenerator
     #   dbt_project_path: /app/dbt
