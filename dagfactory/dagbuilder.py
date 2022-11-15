@@ -105,6 +105,9 @@ class DagBuilder:
                 timezone=dag_params["default_args"].get("timezone", "UTC"),
             )
 
+        if utils.check_dict_key(dag_params, "custom_callbacks"):
+            dag_params = utils.set_callback_from_custom(dag_params)
+
         if utils.check_dict_key(dag_params["default_args"], "retry_delay_sec"):
             dag_params["default_args"]["retry_delay"]: timedelta = timedelta(
                 seconds=dag_params["default_args"]["retry_delay_sec"]
@@ -247,15 +250,9 @@ class DagBuilder:
                 }
                 del task_params["container_spec"]
 
-            if utils.check_dict_key(
-                task_params, "ms_teams_failure_callback"
-            ) and utils.check_dict_key(task_params["ms_teams_failure_callback"], "connection_id"):
-                connection_id = task_params.get("ms_teams_failure_callback").get("connection_id")
-                # task_params["on_failure_callback"] = utils.ms_teams_send_logs
-                task_params["on_failure_callback"] = partial(
-                    utils.ms_teams_send_logs, connection_id=connection_id
-                )
-                del task_params["ms_teams_failure_callback"]
+            if utils.check_dict_key(task_params, "custom_callbacks"):
+                task_params = utils.set_callback_from_custom(task_params)
+                del task_params["custom_callbacks"]
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
@@ -386,6 +383,10 @@ class DagBuilder:
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
+            if utils.check_dict_key(dag_params, "custom_callbacks"):
+                task_conf["custom_callbacks"] = dag_params["custom_callbacks"]
+                del dag_params["custom_callbacks"]
+
             task_conf["task_id"]: str = task_name
             task_conf["dag"]: DAG = dag
             if "operator" in task_conf:

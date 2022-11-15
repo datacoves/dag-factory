@@ -80,9 +80,6 @@ class MSTeamsWebhookOperator(SimpleHttpOperator):
         self.hook = None
 
     def execute(self, context):
-        import ipdb  # TODO remove
-
-        ipdb.set_trace()  # TODO removetrace
         """
         Call the SparkSqlHook to run the provided sql query
         """

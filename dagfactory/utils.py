@@ -1,14 +1,22 @@
 """Module contains various utilities used by dag-factory"""
+import importlib
 import importlib.util
 import os
 import re
 import sys
 from datetime import date, datetime, timedelta
+from functools import partial
 from pathlib import Path
-from typing import Any, AnyStr, Dict, Match, Optional, Pattern, Sequence, Union
+from typing import Any, AnyStr, Dict, List, Match, Optional, Pattern, Union
 
 import pendulum
-from ms_teams_webhook_operator import MSTeamsWebhookOperator
+
+AIRFLOW_AVAILABLE_CALLBACKS: List[str] = [
+    "on_success_callback",
+    "on_failure_callback",
+    "on_retry_callback",
+    "on_execute_callback",
+]
 
 
 def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") -> datetime:
@@ -98,6 +106,23 @@ def merge_configs(config: Dict[str, Any], default_config: Dict[str, Any]) -> Dic
     return config
 
 
+def get_python_callable_from_module(module_path, callable_name):
+    """
+    Import a python callable from Python-module syntax
+
+    :param module_path: Python module where callable exists, i.e. `callbacks.microsoft_teams`
+    :type module_path: str
+    :param callable_name: name of the Python callable
+    :type callable_name: str
+    :returns: Python callable
+    :type: callable
+    """
+    module = importlib.import_module(module_path)
+    callable = getattr(module, callable_name)
+
+    return callable
+
+
 def get_python_callable(python_callable_name, python_callable_file):
     """
     Uses python filepath and callable name to import a valid callable
@@ -139,21 +164,34 @@ def check_dict_key(item_dict: Dict[str, Any], key: str) -> bool:
     return bool(key in item_dict and item_dict[key] is not None)
 
 
-def ms_teams_send_logs(context, connection_id):
-    AIRFLOW_URL = os.environ.get("AIRFLOW_URL")
-    dag_id = context["dag_run"].dag_id
-
-    task_id = context["task_instance"].task_id
-    context["task_instance"].xcom_push(key=dag_id, value=True)
-
-    logs_url = f"https://{AIRFLOW_URL}/log?dag_id={dag_id}&task_id={task_id}&execution_date={context['ts']}"
-    ms_teams_notification = MSTeamsWebhookOperator(
-        task_id="msteams_notify_failure",
-        trigger_rule="all_done",
-        message="`{}` has failed on task: `{}`".format(dag_id, task_id),
-        button_text="View log",
-        button_url=logs_url,
-        theme_color="FF0000",
-        http_conn_id=connection_id,
-    )
-    ms_teams_notification.execute(context)
+def set_callback_from_custom(params):
+    """
+    Set on_xxxxx_callback function references to dags and tasks \
+        based on `custom_callbacks` YML config dictionaries
+    
+    :param params: dag/task params
+    :type params: Dict[Any, Any]
+    :return: updated params
+    :type: Dict[Any, Any]
+    """
+    callbacks: Dict = params["custom_callbacks"]
+    for callback_type, callback_dict in callbacks.items():
+        if callback_type not in AIRFLOW_AVAILABLE_CALLBACKS:
+            raise Exception(
+                f"Airflow callback type {callback_type} not supported. Use {' | '.join(AIRFLOW_AVAILABLE_CALLBACKS)}"
+            )
+        callable = get_python_callable_from_module(
+            callback_dict["module"],
+            callback_dict["callable"],
+        )
+        callback_args = callback_dict["args"]
+        callable_args = []
+        callable_kwargs = {}
+        for arg in callback_args:
+            if type(arg) is dict:
+                for arg_k, arg_v in arg.items():
+                    callable_kwargs.update({arg_k: arg_v})
+            else:
+                callable_args.append(arg)
+        params[callback_type] = partial(callable, *callable_args, **callable_kwargs)
+    return params
