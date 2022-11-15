@@ -1,18 +1,25 @@
 """Module contains various utilities used by dag-factory"""
+import importlib
 import importlib.util
 import os
 import re
 import sys
 from datetime import date, datetime, timedelta
+from functools import partial
 from pathlib import Path
-from typing import Any, AnyStr, Dict, Match, Optional, Pattern, Union
+from typing import Any, AnyStr, Dict, List, Match, Optional, Pattern, Union
 
 import pendulum
 
+AIRFLOW_AVAILABLE_CALLBACKS: List[str] = [
+    "on_success_callback",
+    "on_failure_callback",
+    "on_retry_callback",
+    "on_execute_callback",
+]
 
-def get_datetime(
-    date_value: Union[str, datetime, date], timezone: str = "UTC"
-) -> datetime:
+
+def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") -> datetime:
     """
     Takes value from DAG config and generates valid datetime. Defaults to
     today, if not a valid date or relative time (1 hours, 1 days, etc.)
@@ -31,9 +38,7 @@ def get_datetime(
     if isinstance(date_value, datetime):
         return date_value.replace(tzinfo=local_tz)
     if isinstance(date_value, date):
-        return datetime.combine(date=date_value, time=datetime.min.time()).replace(
-            tzinfo=local_tz
-        )
+        return datetime.combine(date=date_value, time=datetime.min.time()).replace(tzinfo=local_tz)
     # Try parsing as date string
     try:
         return pendulum.parse(date_value).replace(tzinfo=local_tz)
@@ -80,9 +85,7 @@ def get_time_delta(time_string: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def merge_configs(
-    config: Dict[str, Any], default_config: Dict[str, Any]
-) -> Dict[str, Any]:
+def merge_configs(config: Dict[str, Any], default_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Merges a `default` config with DAG config. Used to set default values
     for a group of DAGs.
@@ -101,6 +104,23 @@ def merge_configs(
         else:
             config[key]: Any = default_config[key]
     return config
+
+
+def get_python_callable_from_module(module_path, callable_name):
+    """
+    Import a python callable from Python-module syntax
+
+    :param module_path: Python module where callable exists, i.e. `callbacks.microsoft_teams`
+    :type module_path: str
+    :param callable_name: name of the Python callable
+    :type callable_name: str
+    :returns: Python callable
+    :type: callable
+    """
+    module = importlib.import_module(module_path)
+    callable = getattr(module, callable_name)
+
+    return callable
 
 
 def get_python_callable(python_callable_name, python_callable_file):
@@ -142,3 +162,36 @@ def check_dict_key(item_dict: Dict[str, Any], key: str) -> bool:
     :type: bool
     """
     return bool(key in item_dict and item_dict[key] is not None)
+
+
+def set_callback_from_custom(params):
+    """
+    Set on_xxxxx_callback function references to dags and tasks \
+        based on `custom_callbacks` YML config dictionaries
+    
+    :param params: dag/task params
+    :type params: Dict[Any, Any]
+    :return: updated params
+    :type: Dict[Any, Any]
+    """
+    callbacks: Dict = params["custom_callbacks"]
+    for callback_type, callback_dict in callbacks.items():
+        if callback_type not in AIRFLOW_AVAILABLE_CALLBACKS:
+            raise Exception(
+                f"Airflow callback type {callback_type} not supported. Use {' | '.join(AIRFLOW_AVAILABLE_CALLBACKS)}"
+            )
+        callable = get_python_callable_from_module(
+            callback_dict["module"],
+            callback_dict["callable"],
+        )
+        callback_args = callback_dict["args"]
+        callable_args = []
+        callable_kwargs = {}
+        for arg in callback_args:
+            if type(arg) is dict:
+                for arg_k, arg_v in arg.items():
+                    callable_kwargs.update({arg_k: arg_v})
+            else:
+                callable_args.append(arg)
+        params[callback_type] = partial(callable, *callable_args, **callable_kwargs)
+    return params

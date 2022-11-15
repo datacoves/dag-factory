@@ -3,6 +3,7 @@ FROM python:3.8
 ARG AIRFLOW_VERSION=2.3.1
 ARG AIRFLOW_HOME=/usr/local/airflow
 ENV SLUGIFY_USES_TEXT_UNIDECODE=yes
+ENV AIRFLOW_URL="http://localhost:8080"
 
 RUN set -ex \
     && buildDeps=' \
@@ -22,6 +23,7 @@ RUN set -ex \
     freetds-bin \
     build-essential \
     python3-pip \
+    vim \
     && useradd -ms /bin/bash -d ${AIRFLOW_HOME} airflow \
     && pip install -U pip setuptools wheel \
     && apt-get clean \
@@ -42,10 +44,14 @@ RUN ~/.virtualenvs/datacoves/bin/pip install -r requirements.txt
 RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms
 RUN mkdir -p /root/airflow/dags
 
+ADD examples/plugins/ /root/airflow/plugins/
+
 ADD . /app
 ADD examples/example_basic.py /root/airflow/dags/example_basic.py
 ADD examples/example_airflow_dbt.py /root/airflow/dags/example_airflow_dbt.py
 ADD examples/example_airbyte_operator.py /root/airflow/dags/example_airbyte_operator.py
+
+
 
 WORKDIR /app
 RUN pip install -e .

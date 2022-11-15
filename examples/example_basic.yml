@@ -16,6 +16,17 @@ example_dag2:
   default_args:
     #owner: "custom_owner"
     start_date: 2 days
+  custom_callbacks:
+    on_success_callback:
+      module: callbacks.microsoft_teams
+      callable: inform_success
+      args:
+        - connection_id: msteams_saas_notifications
+    on_failure_callback:
+      module: callbacks.microsoft_teams
+      callable: inform_failure
+      args:
+        - connection_id: msteams_saas_notifications
   #description: "this is an example dag"
   #schedule_interval: "0 3 * * *"
   task_groups:
@@ -26,10 +37,19 @@ example_dag2:
       generator: dagfactory.AirbyteGenerator
       airflow_connection_id: airbyte_conn_example
       connections_ids:
-        - 2302e2d0-fec9-4e3a-a48d-06f48c2c53cf
-        - 203eeb5d-0303-4fec-b80e-e744a4443922
-        - 3e976bcc-275e-4b9a-9e97-e0fef3ac772e
+        - d4205a14-af8e-4323-95ea-1603e28264af
       task_group_name: extract_and_load
+      # custom_callbacks:
+      #   on_success_callback:
+      #     module: callbacks.microsoft_teams
+      #     callable: inform_success
+      #     args:
+      #       - connection_id: msteams_saas_notifications
+      #   on_failure_callback:
+      #     module: callbacks.microsoft_teams
+      #     callable: inform_failure
+      #     args:
+      #       - connection_id: msteams_saas_notifications
     # airbyte_dbt:
     #   generator: dagfactory.AirbyteDbtGenerator
     #   dbt_project_path: /app/dbt

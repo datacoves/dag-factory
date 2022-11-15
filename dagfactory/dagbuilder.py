@@ -1,33 +1,33 @@
 """Module contains code for generating tasks and constructing a DAG"""
-from datetime import timedelta, datetime
+import importlib
+import os
+from datetime import datetime, timedelta
+from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
-import os
-import importlib
-
-from airflow import DAG, configuration
-from airflow.models import Variable
-
+from airflow import DAG
+from airflow import __version__ as AIRFLOW_VERSION
+from airflow import configuration
 from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
-from airflow.models import BaseOperator
+from airflow.models import BaseOperator, Variable
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.module_loading import import_string
-from airflow import __version__ as AIRFLOW_VERSION
 
 # kubernetes operator
 try:
-    from airflow.kubernetes.secret import Secret
     from airflow.kubernetes.pod import Port
-    from airflow.kubernetes.volume_mount import VolumeMount
-    from airflow.kubernetes.volume import Volume
     from airflow.kubernetes.pod_runtime_info_env import PodRuntimeInfoEnv
+    from airflow.kubernetes.secret import Secret
+    from airflow.kubernetes.volume import Volume
+    from airflow.kubernetes.volume_mount import VolumeMount
 except ImportError:
     from airflow.contrib.kubernetes.secret import Secret
     from airflow.contrib.kubernetes.pod import Port
     from airflow.contrib.kubernetes.volume_mount import VolumeMount
     from airflow.contrib.kubernetes.volume import Volume
     from airflow.contrib.kubernetes.pod_runtime_info_env import PodRuntimeInfoEnv
-from kubernetes.client.models import V1Pod, V1Container, V1PodSpec
+
+from kubernetes.client.models import V1Container, V1Pod, V1PodSpec
 from packaging import version
 
 from dagfactory import utils
@@ -75,16 +75,14 @@ class DagBuilder:
         :returns: dict of dag parameters
         """
         try:
-            dag_params: Dict[str, Any] = utils.merge_configs(
-                self.dag_config, self.default_config
-            )
+            dag_params: Dict[str, Any] = utils.merge_configs(self.dag_config, self.default_config)
         except Exception as err:
             raise Exception("Failed to merge config with default config") from err
         dag_params["dag_id"]: str = self.dag_name
 
-        if dag_params.get("task_groups") and version.parse(
-            AIRFLOW_VERSION
-        ) < version.parse("2.0.0"):
+        if dag_params.get("task_groups") and version.parse(AIRFLOW_VERSION) < version.parse(
+            "2.0.0"
+        ):
             raise Exception("`task_groups` key can only be used with Airflow 2.x.x")
 
         if (
@@ -107,23 +105,26 @@ class DagBuilder:
                 timezone=dag_params["default_args"].get("timezone", "UTC"),
             )
 
+        if utils.check_dict_key(dag_params, "custom_callbacks"):
+            dag_params = utils.set_callback_from_custom(dag_params)
+
         if utils.check_dict_key(dag_params["default_args"], "retry_delay_sec"):
             dag_params["default_args"]["retry_delay"]: timedelta = timedelta(
                 seconds=dag_params["default_args"]["retry_delay_sec"]
             )
             del dag_params["default_args"]["retry_delay_sec"]
 
-        if utils.check_dict_key(
-            dag_params, "on_success_callback_name"
-        ) and utils.check_dict_key(dag_params, "on_success_callback_file"):
+        if utils.check_dict_key(dag_params, "on_success_callback_name") and utils.check_dict_key(
+            dag_params, "on_success_callback_file"
+        ):
             dag_params["on_success_callback"]: Callable = utils.get_python_callable(
                 dag_params["on_success_callback_name"],
                 dag_params["on_success_callback_file"],
             )
 
-        if utils.check_dict_key(
-            dag_params, "on_failure_callback_name"
-        ) and utils.check_dict_key(dag_params, "on_failure_callback_file"):
+        if utils.check_dict_key(dag_params, "on_failure_callback_name") and utils.check_dict_key(
+            dag_params, "on_failure_callback_file"
+        ):
             dag_params["on_failure_callback"]: Callable = utils.get_python_callable(
                 dag_params["on_failure_callback_name"],
                 dag_params["on_failure_callback_file"],
@@ -194,10 +195,7 @@ class DagBuilder:
                     else None
                 )
                 task_params["pod_runtime_info_envs"] = (
-                    [
-                        PodRuntimeInfoEnv(**v)
-                        for v in task_params.get("pod_runtime_info_envs")
-                    ]
+                    [PodRuntimeInfoEnv(**v) for v in task_params.get("pod_runtime_info_envs")]
                     if task_params.get("pod_runtime_info_envs") is not None
                     else None
                 )
@@ -236,9 +234,7 @@ class DagBuilder:
 
             # use variables as arguments on operator
             if utils.check_dict_key(task_params, "variables_as_arguments"):
-                variables: List[Dict[str, str]] = task_params.get(
-                    "variables_as_arguments"
-                )
+                variables: List[Dict[str, str]] = task_params.get("variables_as_arguments")
                 for variable in variables:
                     if Variable.get(variable["variable"], default_var=None) is not None:
                         task_params[variable["attribute"]] = Variable.get(
@@ -249,12 +245,14 @@ class DagBuilder:
             if utils.check_dict_key(task_params, "container_spec"):
                 task_params["executor_config"] = {
                     "pod_override": V1Pod(
-                        spec=V1PodSpec(
-                            containers=[V1Container(**task_params["container_spec"])]
-                        )
+                        spec=V1PodSpec(containers=[V1Container(**task_params["container_spec"])])
                     )
                 }
                 del task_params["container_spec"]
+
+            if utils.check_dict_key(task_params, "custom_callbacks"):
+                task_params = utils.set_callback_from_custom(task_params)
+                del task_params["custom_callbacks"]
 
             task: BaseOperator = operator_obj(**task_params)
         except Exception as err:
@@ -262,9 +260,7 @@ class DagBuilder:
         return task
 
     @staticmethod
-    def make_task_groups(
-        task_groups: Dict[str, Any], dag: DAG
-    ) -> Dict[str, "TaskGroup"]:
+    def make_task_groups(task_groups: Dict[str, Any], dag: DAG) -> Dict[str, "TaskGroup"]:
         """Takes a DAG and task group configurations. Creates TaskGroup instances.
 
         :param task_groups: Task group configuration from the YAML configuration file.
@@ -276,11 +272,7 @@ class DagBuilder:
                 task_group_conf["group_id"] = task_group_name
                 task_group_conf["dag"] = dag
                 task_group = TaskGroup(
-                    **{
-                        k: v
-                        for k, v in task_group_conf.items()
-                        if k not in SYSTEM_PARAMS
-                    }
+                    **{k: v for k, v in task_group_conf.items() if k not in SYSTEM_PARAMS}
                 )
                 task_groups_dict[task_group.group_id] = task_group
         return task_groups_dict
@@ -308,18 +300,12 @@ class DagBuilder:
                 group_id = conf["task_group"].group_id
                 name = f"{group_id}.{name}"
             if conf.get("dependencies"):
-                source: Union[
-                    BaseOperator, "TaskGroup"
-                ] = tasks_and_task_groups_instances[name]
+                source: Union[BaseOperator, "TaskGroup"] = tasks_and_task_groups_instances[name]
                 for dep in conf["dependencies"]:
                     if tasks_and_task_groups_config[dep].get("task_group"):
-                        group_id = tasks_and_task_groups_config[dep][
-                            "task_group"
-                        ].group_id
+                        group_id = tasks_and_task_groups_config[dep]["task_group"].group_id
                         dep = f"{group_id}.{dep}"
-                    dep: Union[
-                        BaseOperator, "TaskGroup"
-                    ] = tasks_and_task_groups_instances[dep]
+                    dep: Union[BaseOperator, "TaskGroup"] = tasks_and_task_groups_instances[dep]
                     source.set_upstream(dep)
 
     def build(self) -> Dict[str, Union[str, DAG]]:
@@ -378,9 +364,7 @@ class DagBuilder:
                 dag_params.get("doc_md_python_callable_name"),
                 dag_params.get("doc_md_python_callable_file"),
             )
-            dag.doc_md = doc_md_callable(
-                **dag_params.get("doc_md_python_arguments", {})
-            )
+            dag.doc_md = doc_md_callable(**dag_params.get("doc_md_python_arguments", {}))
 
         # tags parameter introduced in Airflow 1.10.8
         if version.parse(AIRFLOW_VERSION) >= version.parse("1.10.8"):
@@ -399,32 +383,28 @@ class DagBuilder:
         # create dictionary to track tasks and set dependencies
         tasks_dict: Dict[str, BaseOperator] = {}
         for task_name, task_conf in tasks.items():
+            if utils.check_dict_key(dag_params, "custom_callbacks"):
+                task_conf["custom_callbacks"] = dag_params["custom_callbacks"]
+                del dag_params["custom_callbacks"]
+
             task_conf["task_id"]: str = task_name
             task_conf["dag"]: DAG = dag
             if "operator" in task_conf:
                 operator: str = task_conf["operator"]
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
-                    task_conf["task_group"] = task_groups_dict[
-                        task_conf.get("task_group_name")
-                    ]
+                    task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
                 params: Dict[str, Any] = {
                     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
                 }
-                task: BaseOperator = DagBuilder.make_task(
-                    operator=operator, task_params=params
-                )
+                task: BaseOperator = DagBuilder.make_task(operator=operator, task_params=params)
                 tasks_dict[task.task_id]: BaseOperator = task
             elif "generator" in task_conf:
-                generator: str = task_conf[
-                    "generator"
-                ]  # dagfactory.generators.airbyte_dbt.AirbyteGenerator
+                generator: str = task_conf["generator"]
 
                 # add task to task_group
                 if task_groups_dict and task_conf.get("task_group_name"):
-                    task_conf["task_group"] = task_groups_dict[
-                        task_conf.get("task_group_name")
-                    ]
+                    task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
                 params: Dict[str, Any] = {
                     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
                 }
@@ -439,9 +419,7 @@ class DagBuilder:
                     return dict()
                 tasks_dict.update(generated_tasks)
             else:
-                raise Exception(
-                    f"`{task_name}` has no 'operator' neither 'generator' specified"
-                )
+                raise Exception(f"`{task_name}` has no 'operator' neither 'generator' specified")
 
         # set task dependencies after creating tasks
         self.set_dependencies(
