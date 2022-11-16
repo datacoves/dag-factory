@@ -3,11 +3,10 @@ import urllib.parse
 
 from ms_teams_webhook_operator import MSTeamsWebhookOperator
 
-AIRFLOW_URL = os.environ.get("AIRFLOW_URL")
+AIRFLOW_URL = os.environ.get("AIRFLOW__WEBSERVER__BASE_URL")
 
 
 def send_teams_message(context, dag_id, task_id, message, theme_color, connection_id):
-    AIRFLOW_URL = os.environ.get("AIRFLOW_URL")
     context["task_instance"].xcom_push(key=dag_id, value=True)
     timestamp = context["ts"]
     urlencoded_timestamp = urllib.parse.quote(timestamp)
