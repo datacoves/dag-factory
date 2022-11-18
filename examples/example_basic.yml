@@ -1,20 +1,5 @@
-# default:
-#   default_args:
-#     owner: "default_owner"
-#     start_date: 2021-11-12
-#     end_date: 2021-11-15
-#     retries: 1
-#     retry_delay_sec: 300
-#   concurrency: 1
-#   max_active_runs: 1
-#   dagrun_timeout_sec: 600
-#   default_view: "tree"
-#   orientation: "LR"
-#   schedule_interval: "0 1 * * *"
-
 example_dag2:
   default_args:
-    #owner: "custom_owner"
     start_date: 2 days
   custom_callbacks:
     on_success_callback:
@@ -27,8 +12,6 @@ example_dag2:
       callable: inform_failure
       args:
         - connection_id: msteams_saas_notifications
-  #description: "this is an example dag"
-  #schedule_interval: "0 3 * * *"
   task_groups:
     extract_and_load:
       tooltip: "Extract and Load taskgroup"
@@ -39,6 +22,11 @@ example_dag2:
       connections_ids:
         - d4205a14-af8e-4323-95ea-1603e28264af
       task_group_name: extract_and_load
+    fivetran_generator:
+      generator: dagfactory.FivetranGenerator
+      airflow_connection_id: fivetran_connection
+      connections_ids:
+        - tertiary_consent
       # custom_callbacks:
       #   on_success_callback:
       #     module: callbacks.microsoft_teams
@@ -50,12 +38,3 @@ example_dag2:
       #     callable: inform_failure
       #     args:
       #       - connection_id: msteams_saas_notifications
-    # airbyte_dbt:
-    #   generator: dagfactory.AirbyteDbtGenerator
-    #   dbt_project_path: /app/dbt
-    #   dbt_selector:
-    #   airflow_connection_id: airbyte_conn_example
-    task_3:
-      operator: airflow.operators.bash_operator.BashOperator
-      bash_command: "echo 1"
-      dependencies: [extract_and_load]
