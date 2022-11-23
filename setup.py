@@ -9,7 +9,7 @@ import os
 import sys
 from shutil import rmtree
 
-from setuptools import find_packages, setup, Command
+from setuptools import Command, find_packages, setup
 
 # Package meta-data.
 NAME = "dag-factory"
@@ -24,13 +24,15 @@ VERSION = None
 here = os.path.abspath(os.path.dirname(__file__))
 
 REQUIRED = [
-    "apache-airflow[kubernetes]>=2.1.0",
+    # "apache-airflow[kubernetes]>=2.1.0",
+    "apache-airflow-providers-cncf-kubernetes==4.4.0",  # Max Airflow 2.3.1 Kubernetes provider support
     "pyyaml>=6.0",
     "packaging>=20.9",
-    "apache-airflow-providers-http>=2.0.1",
-    "apache-airflow-providers-airbyte>=2.1.1",
     "airflow-dbt>=0.4.0",
     "python-slugify>=4.0.1",
+    "apache-airflow-providers-http>=2.0.1",
+    "apache-airflow-providers-airbyte>=2.1.1",
+    "airflow-provider-fivetran==1.1.2",
 ]
 DEV_REQUIRED = ["black", "pytest", "pylint", "pytest-cov", "tox"]
 

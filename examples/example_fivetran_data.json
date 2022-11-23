@@ -1,0 +1,86 @@
+{
+    "specialization_finch": {},
+    "sketched_monetary": {
+        "details": {
+            "id": "sketched_monetary",
+            "group_id": "sketched_monetary",
+            "service": "snowflake",
+            "region": "AWS_US_EAST_1",
+            "time_zone_offset": "-8",
+            "setup_status": "connected",
+            "config": {
+                "snowflake_region": "us_west_2",
+                "database": "raw",
+                "password": "******",
+                "role": "loader_airbyte",
+                "connection_type": "Directly",
+                "port": "443",
+                "auth": "PASSWORD",
+                "snowflake_cloud": "AWS",
+                "host": "toa80779.snowflakecomputing.com",
+                "user": "svc_airbyte"
+            }
+        },
+        "connectors": {
+            "tertiary_consent": {
+                "id": "tertiary_consent",
+                "group_id": "sketched_monetary",
+                "service": "s3",
+                "service_version": 1,
+                "schema": "fivetran_loans.personal_loans",
+                "connected_by": "usually_loom",
+                "created_at": "2022-11-17T13:06:07.981437Z",
+                "succeeded_at": "2022-11-23T13:48:49.635Z",
+                "failed_at": "None",
+                "paused": false,
+                "pause_after_trial": false,
+                "sync_frequency": 360,
+                "daily_sync_time": "None",
+                "schedule_type": "manual",
+                "status": {
+                    "setup_state": "connected",
+                    "sync_state": "scheduled",
+                    "update_state": "on_schedule",
+                    "is_historical_sync": false,
+                    "tasks": [],
+                    "warnings": []
+                },
+                "setup_tests": "None",
+                "config": "None",
+                "source_sync_details": "None"
+            },
+            "altogether_enthusiasm": {
+                "id": "altogether_enthusiasm",
+                "group_id": "sketched_monetary",
+                "service": "google_analytics",
+                "service_version": 1,
+                "schema": "google_analytics",
+                "connected_by": "usually_loom",
+                "created_at": "2022-11-23T13:08:18.012627Z",
+                "succeeded_at": "2022-11-23T13:49:08.428Z",
+                "failed_at": "None",
+                "paused": false,
+                "pause_after_trial": false,
+                "sync_frequency": 360,
+                "daily_sync_time": "None",
+                "schedule_type": "manual",
+                "status": {
+                    "setup_state": "connected",
+                    "sync_state": "scheduled",
+                    "update_state": "on_schedule",
+                    "is_historical_sync": false,
+                    "tasks": [],
+                    "warnings": [
+                        {
+                            "code": "google_analytics_no_data",
+                            "message": "There is no table updates since at least30days"
+                        }
+                    ]
+                },
+                "setup_tests": "None",
+                "config": "None",
+                "source_sync_details": "None"
+            }
+        }
+    }
+}
