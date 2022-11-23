@@ -1,40 +1,38 @@
 example_dag2:
   default_args:
     start_date: 2 days
-  custom_callbacks:
-    on_success_callback:
-      module: callbacks.microsoft_teams
-      callable: inform_success
-      args:
-        - connection_id: msteams_saas_notifications
-    on_failure_callback:
-      module: callbacks.microsoft_teams
-      callable: inform_failure
-      args:
-        - connection_id: msteams_saas_notifications
+  # custom_callbacks:
+  #   on_success_callback:
+  #     module: callbacks.microsoft_teams
+  #     callable: inform_success
+  #     args:
+  #       - connection_id: msteams_saas_notifications
+  #   on_failure_callback:
+  #     module: callbacks.microsoft_teams
+  #     callable: inform_failure
+  #     args:
+  #       - connection_id: msteams_saas_notifications
   task_groups:
     extract_and_load:
       tooltip: "Extract and Load taskgroup"
   tasks:
-    airbyte_generator:
-      generator: dagfactory.AirbyteGenerator
-      airflow_connection_id: airbyte_conn_example
-      connections_ids:
-        - d4205a14-af8e-4323-95ea-1603e28264af
+    # airbyte_generator:
+    #   generator: dagfactory.generators.airbyte.AirbyteGenerator
+    #   airflow_connection_id: airbyte_connection
+    #   connections_ids:
+    #     - d4205a14-af8e-4323-95ea-1603e28264af
+    #   task_group_name: extract_and_load
+    airbyte_dbt_generator:
+      generator: dagfactory.generators.airbyte.AirbyteDbtGenerator
+      airflow_connection_id: airbyte_connection
+      dbt_project_path: /app/transform
+      deploy_path: /tmp/load
       task_group_name: extract_and_load
-    fivetran_generator:
-      generator: dagfactory.FivetranGenerator
-      airflow_connection_id: fivetran_connection
-      connections_ids:
-        - tertiary_consent
-      # custom_callbacks:
-      #   on_success_callback:
-      #     module: callbacks.microsoft_teams
-      #     callable: inform_success
-      #     args:
-      #       - connection_id: msteams_saas_notifications
-      #   on_failure_callback:
-      #     module: callbacks.microsoft_teams
-      #     callable: inform_failure
-      #     args:
-      #       - connection_id: msteams_saas_notifications
+      virtualenv_path: /root/.virtualenvs/datacoves
+      # Update tag for job
+      run_dbt_compile: false
+      run_dbt_deps: false
+      dbt_list_args: "--select tag:loan_daily"
+    # transform:
+    #   operator: airflow.operators.bash_operator.BashOperator
+    #   bash_command: source /root/.virtualenvs/datacoves/bin/activate && dbt-coves dbt --project-dir /app/transform -- build

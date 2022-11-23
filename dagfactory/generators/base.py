@@ -3,13 +3,9 @@ import shlex
 import subprocess
 from os import environ
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Set
 
 import requests
-from airflow.hooks.base import BaseHook
-from airflow.models import BaseOperator
-from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
-from requests.exceptions import RequestException
 from slugify import slugify
 
 
@@ -22,10 +18,42 @@ class BaseGenerator:
     Common functionalities for all Generators
     """
 
+    def api_call(
+        self, method, endpoint: str, body: Dict[str, str] = None, headers=None, auth=None
+    ):
+        """Generic `api caller`"""
+        try:
+            response = requests.request(
+                method, url=endpoint, json=body, headers=headers, auth=auth
+            )
+            if response.status_code == 200:
+                return json.loads(response.text)
+            if response.status_code == 404:
+                return {}
+
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise e
+
     def get_bash_command(self, virtualenv_path, command):
         return shlex.split(f"/bin/bash -c 'source {virtualenv_path} && {command}'")
 
-    def get_pipeline_connection_list(self, params: Dict[str, Any]) -> List[str]:
+    def generate_sync_task(self, params: Dict[str, Any], operator: str) -> Dict[str, Any]:
+        """
+        Standard Airflow call to `make_task`
+            same logic as dagbuilder.py:
+                this re-usage is why params(dict) must be cleaned up from any
+                extra information that the corresponding operator can't handle
+        """
+        return self.dag_builder.make_task(
+            operator=operator,
+            task_params=params,
+        )
+
+    def get_pipeline_connection_list(self, params: Dict[str, Any]) -> Set[str]:
+        """
+        Discover DBT source(s)' Airbyte/Fivetran connection IDs based on params
+        """
         dbt_project_path = params.pop("dbt_project_path")
         dbt_list_args = params.pop("dbt_list_args", "")
         # This is the folder to copy project to before running dbt
@@ -125,16 +153,14 @@ class BaseGenerator:
         if deploy_path:
             subprocess.run(["rm", "-rf", deploy_path], check=True)
 
-        connections_ids = []
+        connections_ids = set()
         for source in sources_list:
             # Transform the 'dbt source' into [db, schema, table]
             source_db = manifest_json["sources"][source]["database"].lower()
             source_schema = manifest_json["sources"][source]["schema"].lower()
             source_table = manifest_json["sources"][source]["identifier"].lower()
+            connection_id = self.get_pipeline_connection_id(source_db, source_schema, source_table)
+            if connection_id:
+                connections_ids.add(connection_id)
 
-            conn = self.get_pipeline_connection(params, source_db, source_schema, source_table)
-
-            if conn and conn["connectionId"] not in connections_ids:
-                connections_ids.append(conn["connectionId"])
-
-        params["connections_ids"] = connections_ids
+        return connections_ids

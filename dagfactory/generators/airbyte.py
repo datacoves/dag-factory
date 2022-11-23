@@ -1,15 +1,9 @@
-import json
-import shlex
-import subprocess
 from os import environ
-from pathlib import Path
 from typing import Any, Dict
 
-import requests
 from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
 from airflow.providers.airbyte.operators.airbyte import AirbyteTriggerSyncOperator
-from requests.exceptions import RequestException
 from slugify import slugify
 
 from .base import BaseGenerator
@@ -34,7 +28,7 @@ class AirbyteGenerator(BaseGenerator):
 
         except KeyError:
             raise AirbyteGeneratorException(
-                "`airflow_connection_id` is missing in DAG's configuration YAML file"
+                "`airflow_connection_id` is missing in Airbyte DAG configuration YAML file"
             )
 
         if TEST_MODE:
@@ -57,61 +51,39 @@ class AirbyteGenerator(BaseGenerator):
             airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
                 entity="sources"
             )
-            self.airbyte_workspace_id = self.airbyte_api_call(
+            self.airbyte_workspace_id = self.api_call(
+                "POST",
                 airbyte_api_endpoint_list_workspaces,
             )["workspaces"][0]["workspaceId"]
             self.airbyte_api_standard_req_body = {"workspaceId": self.airbyte_workspace_id}
-            self.airbyte_connections = self.airbyte_api_call(
+            self.airbyte_connections = self.api_call(
+                "POST",
                 airbyte_api_endpoint_list_connections,
                 self.airbyte_api_standard_req_body,
             )["connections"]
-            self.airbyte_destinations = self.airbyte_api_call(
+            self.airbyte_destinations = self.api_call(
+                "POST",
                 airbyte_api_endpoint_list_destinations,
                 self.airbyte_api_standard_req_body,
             )["destinations"]
-            self.airbyte_sources = self.airbyte_api_call(
+            self.airbyte_sources = self.api_call(
+                "POST",
                 airbyte_api_endpoint_list_sources,
                 self.airbyte_api_standard_req_body,
             )["sources"]
             self.connections_should_exist = True
 
-    def airbyte_api_call(self, endpoint: str, body: Dict[str, str] = None):
-        """Generic `api caller` for contacting Airbyte"""
-        try:
-            response = requests.post(endpoint, json=body)
-
-            if response.status_code == 200:
-                return json.loads(response.text)
-            else:
-                raise RequestException(
-                    f"Unexpected status code from airbyte: {response.status_code}"
-                )
-        except RequestException as e:
-            raise AirbyteGeneratorException("Airbyte API error: " + e)
-
-    def generate_sync_task(self, params: Dict[str, Any], operator: str) -> Dict[str, Any]:
-        """
-        Standard Airflow call to `make_task`
-            same logic as dagbuilder.py:
-                this re-usage is why params(dict) must be cleaned up from any
-                extra information that the corresponding operator can't handle
-        """
-        return self.dag_builder.make_task(
-            operator=operator,
-            task_params=params,
-        )
-
     def remove_inexistant_conn_ids(self, connections_ids):
         """
-        Overwrite the user-written `connections_ids` list (.yml) with the ones
+        Overwrite the user-written `connections_ids` set (.yml) with the ones
         actually existing inside Airbyte
         If not handled, a lot of Airflow tasks would fail.
         """
-        return [
+        return {
             c_id
             for c_id in connections_ids
             if c_id in [connection["connectionId"] for connection in self.airbyte_connections]
-        ]
+        }
 
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -120,7 +92,7 @@ class AirbyteGenerator(BaseGenerator):
             Fill and return the tasks dictionary
         """
         params["airbyte_conn_id"] = params.pop("airflow_connection_id")
-        connections_ids = params.pop("connections_ids")
+        connections_ids = set(params.pop("connections_ids"))
 
         generator_class = params.pop("generator")
         if "AirbyteGenerator" in generator_class:
@@ -170,9 +142,9 @@ class AirbyteGenerator(BaseGenerator):
             if namespace_definition == "customformat":
                 return conn["namespaceFormat"].lower()
 
-    def get_pipeline_connection(self, params, db, schema, table):
+    def get_pipeline_connection_id(self, db: str, schema: str, table: str) -> str:
         """
-        Given a table name, schema and db, returns the corresponding airbyte connection
+        Given a table name, schema and db, returns the corresponding Airbyte Connection ID
         """
 
         airbyte_tables = []
@@ -191,7 +163,7 @@ class AirbyteGenerator(BaseGenerator):
                         airbyte_schema = self._get_connection_schema(conn, destination_config)
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
-                            return conn
+                            return conn.get("connectionId")
         if self.connections_should_exist:
             raise AirbyteGeneratorException(
                 f"Airbyte error: there are no connections for table {db}.{schema}.{table}. "

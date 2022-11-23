@@ -1,0 +1,24 @@
+fivetran_test:
+  default_args:
+    start_date: 2 days
+  task_groups:
+    extract_and_load:
+      tooltip: "Extract and Load taskgroup"
+  tasks:
+    # fivetran_generator:
+    #   generator: dagfactory.generators.fivetran.FivetranGenerator
+    #   airflow_connection_id: fivetran_connection
+    #   connections_ids:
+    #     - this_shouldnt_be_here
+    #     - tertiary_consent
+    fivetran_dbt_generator:
+      generator: dagfactory.generators.fivetran.FivetranDbtGenerator
+      airflow_connection_id: fivetran_connection
+      dbt_project_path: /app/transform
+      deploy_path: /tmp/load
+      task_group_name: extract_and_load
+      virtualenv_path: /root/.virtualenvs/datacoves
+      # Update tag for job
+      run_dbt_compile: false
+      run_dbt_deps: false
+      dbt_list_args: "--select tag:fivetran_loans"
