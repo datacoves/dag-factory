@@ -88,6 +88,7 @@ class BaseGenerator:
             )
         cwd = dbt_project_path
 
+        deploy_path = None
         if self.is_readonly(dbt_project_path):
             commit = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
