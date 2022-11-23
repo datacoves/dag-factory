@@ -17,13 +17,13 @@ example_dag2:
       tooltip: "Extract and Load taskgroup"
   tasks:
     # airbyte_generator:
-    #   generator: dagfactory.generators.airbyte.AirbyteGenerator
+    #   generator: dagfactory.AirbyteGenerator
     #   airflow_connection_id: airbyte_connection
     #   connections_ids:
     #     - d4205a14-af8e-4323-95ea-1603e28264af
     #   task_group_name: extract_and_load
     airbyte_dbt_generator:
-      generator: dagfactory.generators.airbyte.AirbyteDbtGenerator
+      generator: dagfactory.AirbyteDbtGenerator
       airflow_connection_id: airbyte_connection
       dbt_project_path: /app/transform
       deploy_path: /tmp/load

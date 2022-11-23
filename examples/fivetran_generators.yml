@@ -6,14 +6,14 @@ fivetran_test:
       tooltip: "Extract and Load taskgroup"
   tasks:
     # fivetran_generator:
-    #   generator: dagfactory.generators.fivetran.FivetranGenerator
+    #   generator: dagfactory.FivetranGenerator
     #   airflow_connection_id: fivetran_connection
     #   connections_ids:
     #     - this_shouldnt_be_here
     #     - tertiary_consent
     #     - altogether_enthusiasm
     fivetran_dbt_generator:
-      generator: dagfactory.generators.fivetran.FivetranDbtGenerator
+      generator: dagfactory.FivetranDbtGenerator
       airflow_connection_id: fivetran_connection
       dbt_project_path: /app/transform
       deploy_path: /tmp/load
