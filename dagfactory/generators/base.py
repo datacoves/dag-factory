@@ -1,4 +1,5 @@
 import json
+import os
 import shlex
 import subprocess
 from os import environ
@@ -6,6 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, Set
 
 import requests
+from airflow.models import BaseOperator
+from airflow.utils.module_loading import as_importable_string
 from slugify import slugify
 
 
@@ -19,7 +22,12 @@ class BaseGenerator:
     """
 
     def api_call(
-        self, method, endpoint: str, body: Dict[str, str] = None, headers=None, auth=None
+        self,
+        method,
+        endpoint: str,
+        body: Dict[str, str] = None,
+        headers=None,
+        auth=None,
     ):
         """Generic `api caller`"""
         try:
@@ -38,7 +46,9 @@ class BaseGenerator:
     def get_bash_command(self, virtualenv_path, command):
         return shlex.split(f"/bin/bash -c 'source {virtualenv_path} && {command}'")
 
-    def generate_sync_task(self, params: Dict[str, Any], operator: str) -> Dict[str, Any]:
+    def generate_sync_task(
+        self, params: Dict[str, Any], operator: BaseOperator
+    ) -> Dict[str, Any]:
         """
         Standard Airflow call to `make_task`
             same logic as dagbuilder.py:
@@ -46,9 +56,14 @@ class BaseGenerator:
                 extra information that the corresponding operator can't handle
         """
         return self.dag_builder.make_task(
-            operator=operator,
+            operator=as_importable_string(operator),
             task_params=params,
         )
+
+    def is_readonly(self, folder: str) -> bool:
+        """Returns True if `folder` is readonly"""
+        stat = os.statvfs(folder)
+        return bool(stat.f_flag & os.ST_RDONLY) or not os.access(folder, os.W_OK)
 
     def get_pipeline_connection_list(self, params: Dict[str, Any]) -> Set[str]:
         """
@@ -56,11 +71,11 @@ class BaseGenerator:
         """
         dbt_project_path = params.pop("dbt_project_path")
         dbt_list_args = params.pop("dbt_list_args", "")
-        # This is the folder to copy project to before running dbt
-        deploy_path = params.pop("deploy_path", None)
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", False)
         virtualenv_path = params.pop("virtualenv_path", None)
+        # Removing deprecated parameter in case DAG specifies it
+        params.pop("deploy_path", None)
         if virtualenv_path:
             virtualenv_path = Path(f"{virtualenv_path}/bin/activate").absolute()
 
@@ -72,14 +87,15 @@ class BaseGenerator:
                 / dbt_project_path
             )
         cwd = dbt_project_path
-        if deploy_path:
+
+        if self.is_readonly(dbt_project_path):
             commit = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True,
                 text=True,
                 cwd=dbt_project_path,
             ).stdout.strip("\n")
-            deploy_path += "-" + commit
+            deploy_path = "/tmp/airbyte-generator-" + commit
             # Move folders
             subprocess.run(["cp", "-rf", dbt_project_path, deploy_path], check=True)
             cwd = deploy_path
@@ -139,7 +155,9 @@ class BaseGenerator:
                 error_message += f"{e.stdout.decode()}\n"
             if e.stderr:
                 error_message += f"{e.stderr.decode()}"
-            raise GeneratorException(f"Exception ocurred running {command}\n{error_message}")
+            raise GeneratorException(
+                f"Exception ocurred running {command}\n{error_message}"
+            )
 
         sources_list = []
         if "No nodes selected" not in stdout:
@@ -159,7 +177,9 @@ class BaseGenerator:
             source_db = manifest_json["sources"][source]["database"].lower()
             source_schema = manifest_json["sources"][source]["schema"].lower()
             source_table = manifest_json["sources"][source]["identifier"].lower()
-            connection_id = self.get_pipeline_connection_id(source_db, source_schema, source_table)
+            connection_id = self.get_pipeline_connection_id(
+                source_db, source_schema, source_table
+            )
             if connection_id:
                 connections_ids.add(connection_id)
 

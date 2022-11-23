@@ -18,10 +18,6 @@ class AirbyteGeneratorException(Exception):
 class AirbyteGenerator(BaseGenerator):
     def __init__(self, dag_builder, params):
         self.dag_builder = dag_builder
-        self.AIRFLOW_OPERATOR_FULL_PATH = (
-            AirbyteTriggerSyncOperator.__module__ + "." + AirbyteTriggerSyncOperator.__qualname__
-        )
-        self.AIRBYTE_DESTINATION_TABLE_PREFIX = "_airbyte_raw_"
 
         try:
             airbyte_connection_name = params["airflow_connection_id"]
@@ -37,16 +33,18 @@ class AirbyteGenerator(BaseGenerator):
         else:
             airbyte_connection = BaseHook.get_connection(airbyte_connection_name)
 
-            airbyte_api_url = f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
+            airbyte_api_url = (
+                f"http://{airbyte_connection.host}:{airbyte_connection.port}/api/v1/"
+            )
             airbyte_api_endpoint_list_entity = airbyte_api_url + "{entity}/list"
-            airbyte_api_endpoint_list_workspaces = airbyte_api_endpoint_list_entity.format(
-                entity="workspaces"
+            airbyte_api_endpoint_list_workspaces = (
+                airbyte_api_endpoint_list_entity.format(entity="workspaces")
             )
-            airbyte_api_endpoint_list_connections = airbyte_api_endpoint_list_entity.format(
-                entity="connections"
+            airbyte_api_endpoint_list_connections = (
+                airbyte_api_endpoint_list_entity.format(entity="connections")
             )
-            airbyte_api_endpoint_list_destinations = airbyte_api_endpoint_list_entity.format(
-                entity="destinations"
+            airbyte_api_endpoint_list_destinations = (
+                airbyte_api_endpoint_list_entity.format(entity="destinations")
             )
             airbyte_api_endpoint_list_sources = airbyte_api_endpoint_list_entity.format(
                 entity="sources"
@@ -55,7 +53,9 @@ class AirbyteGenerator(BaseGenerator):
                 "POST",
                 airbyte_api_endpoint_list_workspaces,
             )["workspaces"][0]["workspaceId"]
-            self.airbyte_api_standard_req_body = {"workspaceId": self.airbyte_workspace_id}
+            self.airbyte_api_standard_req_body = {
+                "workspaceId": self.airbyte_workspace_id
+            }
             self.airbyte_connections = self.api_call(
                 "POST",
                 airbyte_api_endpoint_list_connections,
@@ -82,7 +82,8 @@ class AirbyteGenerator(BaseGenerator):
         return {
             c_id
             for c_id in connections_ids
-            if c_id in [connection["connectionId"] for connection in self.airbyte_connections]
+            if c_id
+            in [connection["connectionId"] for connection in self.airbyte_connections]
         }
 
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -103,7 +104,7 @@ class AirbyteGenerator(BaseGenerator):
             task_id = self._create_airbyte_connection_name_for_id(conn_id)
             params["task_id"] = task_id
             params["connection_id"] = conn_id
-            tasks[task_id] = self.generate_sync_task(params, self.AIRFLOW_OPERATOR_FULL_PATH)
+            tasks[task_id] = self.generate_sync_task(params, AirbyteTriggerSyncOperator)
 
         return tasks
 
@@ -112,7 +113,9 @@ class AirbyteGenerator(BaseGenerator):
         for destination in self.airbyte_destinations:
             if destination["destinationId"] == id:
                 return destination
-        raise AirbyteGeneratorException(f"Airbyte error: there are no destinations for id {id}")
+        raise AirbyteGeneratorException(
+            f"Airbyte error: there are no destinations for id {id}"
+        )
 
     def _get_airbyte_source(self, id):
         """Get the complete Source object from it's ID"""
@@ -154,13 +157,15 @@ class AirbyteGenerator(BaseGenerator):
                 airbyte_table = stream["stream"]["name"].lower()
                 airbyte_tables.append(airbyte_table)
                 if airbyte_table == table.replace("_airbyte_raw_", ""):
-                    destination_config = self._get_airbyte_destination(conn["destinationId"])[
-                        "connectionConfiguration"
-                    ]
+                    destination_config = self._get_airbyte_destination(
+                        conn["destinationId"]
+                    )["connectionConfiguration"]
 
                     # match database
                     if db == destination_config["database"].lower():
-                        airbyte_schema = self._get_connection_schema(conn, destination_config)
+                        airbyte_schema = self._get_connection_schema(
+                            conn, destination_config
+                        )
                         # and finally, match schema, if defined
                         if airbyte_schema == schema or not airbyte_schema:
                             return conn.get("connectionId")
@@ -177,7 +182,9 @@ class AirbyteGenerator(BaseGenerator):
         for conn in self.airbyte_connections:
             if conn["connectionId"] == conn_id:
                 source_name = self._get_airbyte_source(conn["sourceId"])["name"]
-                destination_name = self._get_airbyte_destination(conn["destinationId"])["name"]
+                destination_name = self._get_airbyte_destination(conn["destinationId"])[
+                    "name"
+                ]
                 return slugify(f"{source_name} → {destination_name}")
 
         raise AirbyteGeneratorException(
