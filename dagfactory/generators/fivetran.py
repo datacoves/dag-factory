@@ -55,6 +55,7 @@ class FivetranGenerator(BaseGenerator):
 
     def _populate_fivetran_data(self) -> Dict[Any, Any]:
         """
+        Create set with Fivetran's connectors IDs
         Create dictionary with Fivetran's destinations and connectors information
         - returns {
             destination_id: {
@@ -136,9 +137,7 @@ class FivetranGenerator(BaseGenerator):
 
         tasks: Dict[str, BaseOperator] = {}
         for conn_id in connectors_ids:
-            task_id = self._get_fivetran_connector_name_for_id(
-                conn_id
-            )  # TODO: implement Fivetran naming logic
+            task_id = self._get_fivetran_connector_name_for_id(conn_id)
             params["task_id"] = task_id
             params["connector_id"] = conn_id
             tasks[task_id] = self.generate_sync_task(params, self.FIVETRAN_OPERATOR_FULL_PATH)

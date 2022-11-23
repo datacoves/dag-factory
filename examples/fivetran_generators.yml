@@ -11,6 +11,7 @@ fivetran_test:
     #   connections_ids:
     #     - this_shouldnt_be_here
     #     - tertiary_consent
+    #     - altogether_enthusiasm
     fivetran_dbt_generator:
       generator: dagfactory.generators.fivetran.FivetranDbtGenerator
       airflow_connection_id: fivetran_connection

@@ -26,12 +26,12 @@ class BaseGenerator:
             response = requests.request(
                 method, url=endpoint, json=body, headers=headers, auth=auth
             )
-            if response.status_code == 200:
-                return json.loads(response.text)
             if response.status_code == 404:
                 return {}
+            else:
+                response.raise_for_status()
+                return json.loads(response.text)
 
-            response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             raise e
 

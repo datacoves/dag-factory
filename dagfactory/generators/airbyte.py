@@ -185,10 +185,6 @@ class AirbyteGenerator(BaseGenerator):
         )
 
 
-class AirbyteDbtGeneratorException(Exception):
-    pass
-
-
 class AirbyteDbtGenerator(AirbyteGenerator):
     def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
         DAG_GENERATION_TIMEOUT = 300  # 5 minutes
