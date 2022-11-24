@@ -16,10 +16,9 @@ fivetran_test:
       generator: dagfactory.FivetranDbtGenerator
       airflow_connection_id: fivetran_connection
       dbt_project_path: /app/transform
-      deploy_path: /tmp/load
       task_group_name: extract_and_load
       virtualenv_path: /root/.virtualenvs/datacoves
       # Update tag for job
       run_dbt_compile: false
       run_dbt_deps: false
-      dbt_list_args: "--select tag:fivetran_loans"
+      dbt_list_args: "--select tag:fivetran_test"

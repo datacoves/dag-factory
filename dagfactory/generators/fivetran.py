@@ -94,6 +94,15 @@ class FivetranGenerator(BaseGenerator):
         )
         return group_details.get("data")
 
+    def _get_connector_details(self, connector_id):
+        """
+        Get Connector details from Fivetran API
+        """
+        connector_details = self._fivetran_api_call(
+            "GET", API_ENDPOINTS["CONNECTOR_DETAILS"].format(connector=connector_id)
+        )
+        return connector_details.get("data")
+
     def _get_group_connectors(
         self, fivetran_connectors: Set[str], group_id: str
     ) -> Dict[Any, Any]:
@@ -107,7 +116,7 @@ class FivetranGenerator(BaseGenerator):
         for connector in group_connectors.get("data", {}).get("items", []):
             connector_id = connector["id"]
             fivetran_connectors.add(connector_id)
-            connector_data[connector_id] = connector
+            connector_data[connector_id] = self._get_connector_details(connector_id)
         return connector_data
 
     def _get_fivetran_connector_name_for_id(self, connector_id):
@@ -147,6 +156,22 @@ class FivetranGenerator(BaseGenerator):
             tasks[task_id] = self.generate_sync_task(params, FivetranOperator)
         return tasks
 
+    def check_value_in_object(self, obj, value):
+        if isinstance(obj, str):
+            if value in obj.lower():
+                return True
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                if self.check_value_in_object(v, value):
+                    return True
+        elif isinstance(obj, list):
+            for item in obj:
+                if self.check_value_in_object(item, value):
+                    return True
+        else:
+            return False
+        return False
+
     def get_pipeline_connection_id(
         self, source_db: str, source_schema: str, source_table: str
     ) -> str:
@@ -158,18 +183,13 @@ class FivetranGenerator(BaseGenerator):
             # destination dict can be empty if Fivetran Destination is missing configuration or not yet tested
             if dest_dict and dest_dict.get("details"):
                 # match dbt source_db to Fivetran destination database
-                if (
-                    dest_dict.get("details", {})
-                    .get("config", {})
-                    .get("database")
-                    .lower()
-                    == source_db.lower()
-                ):
-                    # find the appropiate Connector from destination connectors
+                if self.check_value_in_object(dest_dict, source_db.lower()):
+                    # find the appropiate Connector from destination connectors)
                     for connector_dict in dest_dict.get("connectors").values():
-                        if (
-                            connector_dict.get("schema", "").lower()
-                            == fivetran_schema_db_naming
+                        if self.check_value_in_object(
+                            connector_dict, source_schema.lower()
+                        ) and self.check_value_in_object(
+                            connector_dict, source_table.lower()
                         ):
                             return connector_dict["id"]
         raise FivetranGeneratorException(
