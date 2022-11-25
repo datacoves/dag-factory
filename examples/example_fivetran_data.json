@@ -23,101 +23,33 @@
         },
         "connectors": {
             "tertiary_consent": {
-                "id": "tertiary_consent",
-                "group_id": "sketched_monetary",
-                "service": "s3",
-                "service_version": 1,
-                "schema": "fivetran_loans.personal_loans",
-                "connected_by": "usually_loom",
-                "created_at": "2022-11-17T13:06:07.981437Z",
-                "succeeded_at": "2022-11-24T12:54:15.386Z",
-                "failed_at": "None",
-                "paused": false,
-                "pause_after_trial": false,
-                "sync_frequency": 360,
-                "schedule_type": "manual",
-                "status": {
-                    "setup_state": "connected",
-                    "schema_status": "ready",
-                    "sync_state": "scheduled",
-                    "update_state": "on_schedule",
-                    "is_historical_sync": false,
-                    "tasks": [],
-                    "warnings": []
-                },
-                "config": {
-                    "skip_before": 0,
-                    "skip_after": 0,
-                    "file_type": "csv",
-                    "on_error": "fail",
-                    "compression": "infer",
-                    "append_file_option": "upsert_file",
-                    "empty_header": false,
-                    "bucket": "datacoves-sample-data-public",
-                    "external_id": "sketched_monetary",
-                    "is_public": true,
-                    "list_strategy": "complete_listing"
+                "fivetran_loans": {
+                    "name_in_destination": "fivetran_loans",
+                    "enabled": true,
+                    "tables": {
+                        "personal_loans": {
+                            "name_in_destination": "personal_loans",
+                            "enabled": true,
+                            "enabled_patch_settings": {
+                                "allowed": true
+                            }
+                        }
+                    }
                 }
             },
             "altogether_enthusiasm": {
-                "id": "altogether_enthusiasm",
-                "group_id": "sketched_monetary",
-                "service": "google_analytics",
-                "service_version": 1,
-                "schema": "google_analytics",
-                "connected_by": "usually_loom",
-                "created_at": "2022-11-23T13:08:18.012627Z",
-                "succeeded_at": "2022-11-23T13:49:08.428Z",
-                "failed_at": "None",
-                "paused": false,
-                "pause_after_trial": false,
-                "sync_frequency": 360,
-                "schedule_type": "manual",
-                "status": {
-                    "setup_state": "connected",
-                    "schema_status": "ready",
-                    "sync_state": "scheduled",
-                    "update_state": "on_schedule",
-                    "is_historical_sync": false,
-                    "tasks": [],
-                    "warnings": [
-                        {
-                            "code": "google_analytics_no_data",
-                            "message": "There is no table updates since at least30days"
+                "google_analytics": {
+                    "name_in_destination": "google_analytics",
+                    "enabled": true,
+                    "tables": {
+                        "channel_traffic": {
+                            "name_in_destination": "channel_traffic",
+                            "enabled": true,
+                            "enabled_patch_settings": {
+                                "allowed": true
+                            }
                         }
-                    ]
-                },
-                "config": {
-                    "sync_mode": "AllAccounts",
-                    "reports": [
-                        {
-                            "table": "channel_traffic",
-                            "dimensions": [
-                                "date",
-                                "channelGrouping"
-                            ],
-                            "metrics": [
-                                "goalValueAll",
-                                "newUsers",
-                                "sessions",
-                                "avgSessionDuration",
-                                "goalCompletionsAll",
-                                "percentNewSessions",
-                                "pageviewsPerSession",
-                                "goalConversionRateAll",
-                                "users",
-                                "bounceRate"
-                            ],
-                            "config_type": "Prebuilt",
-                            "prebuilt_report": "CHANNEL_TRAFFIC"
-                        }
-                    ],
-                    "timeframe_months": "TWELVE"
-                },
-                "source_sync_details": {
-                    "profile_ids": [
-                        "195277374"
-                    ]
+                    }
                 }
             }
         }
