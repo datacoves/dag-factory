@@ -23,6 +23,7 @@ class FivetranGeneratorException(Exception):
 class FivetranGenerator(BaseGenerator):
     def __init__(self, dag_builder, params):
         self.dag_builder = dag_builder
+        self.ignored_source_tables = ["fivetran_audit", "fivetran_audit_warning"]
 
         try:
             fivetran_connection_name = params["airflow_connection_id"]
@@ -182,7 +183,6 @@ class FivetranGenerator(BaseGenerator):
         """
         Given a table name, schema and db, returns the corresponding Fivetran Connection ID
         """
-        fivetran_schema_db_naming = f"{source_schema}.{source_table}".lower()
         for dest_dict in self.fivetran_data.values():
             # destination dict can be empty if Fivetran Destination is missing configuration or not yet tested
             if dest_dict and dest_dict.get("details"):
@@ -198,9 +198,6 @@ class FivetranGenerator(BaseGenerator):
                             source_table.lower(),
                         ):
                             return connector_id
-        raise FivetranGeneratorException(
-            f"There is no Fivetran Connector for {source_db}.{fivetran_schema_db_naming}"
-        )
 
 
 class FivetranDbtGenerator(FivetranGenerator, BaseGenerator):

@@ -18,6 +18,7 @@ class AirbyteGeneratorException(Exception):
 class AirbyteGenerator(BaseGenerator):
     def __init__(self, dag_builder, params):
         self.dag_builder = dag_builder
+        self.ignored_source_tables = []
 
         try:
             airbyte_connection_name = params["airflow_connection_id"]
