@@ -1,3 +1,4 @@
+from os import environ
 from typing import Any, Dict, Set
 
 from airflow.hooks.base import BaseHook
@@ -15,6 +16,8 @@ API_ENDPOINTS = {
     "CONNECTOR_SCHEMAS": FIVETRAN_API_BASE_URL + "/connectors/{connector}/schemas",
 }
 
+TEST_MODE = bool(environ.get("TEST_MODE"))
+
 
 class FivetranGeneratorException(Exception):
     pass
@@ -23,19 +26,28 @@ class FivetranGeneratorException(Exception):
 class FivetranGenerator(BaseGenerator):
     def __init__(self, dag_builder, params):
         self.dag_builder = dag_builder
+        self.ignored_source_tables = ["fivetran_audit", "fivetran_audit_warning"]
 
-        try:
-            fivetran_connection_name = params["airflow_connection_id"]
-            self.fivetran_connection = BaseHook.get_connection(fivetran_connection_name)
+        if TEST_MODE:
+            self.fivetran_data = {}
+            self.fivetran_connectors_set = set()
+            self.connectors_should_exist = False
+        else:
+            try:
+                fivetran_connection_name = params["airflow_connection_id"]
+                self.fivetran_connection = BaseHook.get_connection(
+                    fivetran_connection_name
+                )
 
-        except KeyError:
-            raise FivetranGeneratorException(
-                "`airflow_connection_id` is missing in Fivetran DAG configuration YAML file"
-            )
-        (
-            self.fivetran_connectors_set,
-            self.fivetran_data,
-        ) = self._populate_fivetran_data()
+            except KeyError:
+                raise FivetranGeneratorException(
+                    "`airflow_connection_id` is missing in Fivetran DAG configuration YAML file"
+                )
+            (
+                self.fivetran_connectors_set,
+                self.fivetran_data,
+            ) = self._populate_fivetran_data()
+            self.connectors_should_exist = True
 
     def _fivetran_api_call(self, method: str, endpoint: str):
         """
@@ -198,9 +210,10 @@ class FivetranGenerator(BaseGenerator):
                             source_table.lower(),
                         ):
                             return connector_id
-        raise FivetranGeneratorException(
-            f"There is no Fivetran Connector for {source_db}.{fivetran_schema_db_naming}"
-        )
+        if self.connectors_should_exist:
+            raise FivetranGeneratorException(
+                f"There is no Fivetran Connector for {source_db}.{fivetran_schema_db_naming}"
+            )
 
 
 class FivetranDbtGenerator(FivetranGenerator, BaseGenerator):

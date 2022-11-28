@@ -175,9 +175,11 @@ class BaseGenerator:
         connections_ids = set()
         for source in sources_list:
             # Transform the 'dbt source' into [db, schema, table]
+            source_table = manifest_json["sources"][source]["identifier"].lower()
+            if source_table in self.ignored_source_tables:
+                continue
             source_db = manifest_json["sources"][source]["database"].lower()
             source_schema = manifest_json["sources"][source]["schema"].lower()
-            source_table = manifest_json["sources"][source]["identifier"].lower()
             connection_id = self.get_pipeline_connection_id(
                 source_db, source_schema, source_table
             )
