@@ -1,4 +1,3 @@
-import time
 from os import environ
 from typing import Any, Dict, Set
 
@@ -185,6 +184,7 @@ class FivetranGenerator(BaseGenerator):
                     + "', key='return_value') }}"
                 )
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
+                sensor.set_upstream(trigger)
                 tasks[sensor.task_id] = sensor
         return tasks
 
