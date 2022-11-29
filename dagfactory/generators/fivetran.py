@@ -170,6 +170,7 @@ class FivetranGenerator(BaseGenerator):
             trigger_id = task_name + "-trigger"
             trigger_params["task_id"] = trigger_id
             trigger_params["connector_id"] = conn_id
+            trigger_params["do_xcom_push"] = True
             trigger = self.generate_sync_task(trigger_params, FivetranOperator)
             tasks[trigger.task_id] = trigger
             if wait_for_completion:
@@ -177,8 +178,12 @@ class FivetranGenerator(BaseGenerator):
                 sensor_params = params.copy()
                 sensor_params["task_id"] = task_name + "-sensor"
                 sensor_params["connector_id"] = conn_id
-                sensor_params["priority_weight"] = 2
                 sensor_params["poke_interval"] = poke_interval
+                sensor_params["xcom"] = (
+                    "{{ task_instance.xcom_pull('"
+                    + trigger_id
+                    + "', key='return_value') }}"
+                )
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
                 tasks[sensor.task_id] = sensor
         return tasks
