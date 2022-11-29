@@ -1,8 +1,10 @@
+import time
 from os import environ
 from typing import Any, Dict, Set
 
 from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
+from airflow.operators.python import PythonOperator
 from fivetran_provider.operators.fivetran import FivetranOperator
 from fivetran_provider.sensors.fivetran import FivetranSensor
 from slugify import slugify
@@ -162,21 +164,36 @@ class FivetranGenerator(BaseGenerator):
 
         tasks: Dict[str, BaseOperator] = {}
         for conn_id in connectors_ids:
-            task_params = params.copy()
             task_name = self._get_fivetran_connector_name_for_id(conn_id)
-            task_id = task_name + "-trigger"
-            task_params["task_id"] = task_id
-            task_params["connector_id"] = conn_id
-            task = self.generate_sync_task(task_params, FivetranOperator)
-            tasks[task.task_id] = task
+
+            # Trigger task
+            trigger_params = params.copy()
+            trigger_id = task_name + "-trigger"
+            trigger_params["task_id"] = trigger_id
+            trigger_params["connector_id"] = conn_id
+            trigger = self.generate_sync_task(trigger_params, FivetranOperator)
+            tasks[trigger.task_id] = trigger
             if wait_for_completion:
-                sensor_id = task_name + "-sensor"
+                # Delay task - required to let the sensor read trigger's return value on time
+                delay_params = params.copy()
+                delay_params["task_id"] = task_name + "-delay"
+                delay_params["python_callable"] = lambda: time.sleep(60)
+                delay = PythonOperator(**delay_params)
+                delay.set_upstream(trigger)
+                tasks[delay.task_id] = delay
+
+                # Sensor task - senses Fivetran connectors status
                 sensor_params = params.copy()
-                sensor_params["task_id"] = sensor_id
+                sensor_params["task_id"] = task_name + "-sensor"
                 sensor_params["connector_id"] = conn_id
                 sensor_params["poke_interval"] = poke_interval
+                sensor_params["xcom"] = (
+                    "{{ task_instance.xcom_pull('"
+                    + trigger_id
+                    + "', key='return_value') }}"
+                )
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
-                sensor.set_upstream(task)
+                sensor.set_upstream(delay)
                 tasks[sensor.task_id] = sensor
         return tasks
 
