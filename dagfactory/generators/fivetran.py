@@ -136,11 +136,7 @@ class FivetranGenerator(BaseGenerator):
         """
         Create a name for Fivetran tasks based on a Connector ID
         """
-        # FIXME: What's the purpose of this?
-        for dest_dict in self.fivetran_data.values():
-            for conn_key in dest_dict.get("connectors", {}).keys():
-                if conn_key == connector_id:
-                    return slugify(f"Fivetran {conn_key}")
+        return slugify(f"Fivetran Connector {connector_id}")
 
     def remove_inexistant_connector_ids(self, connectors_ids: Set[str]) -> Set[str]:
         """
@@ -157,6 +153,7 @@ class FivetranGenerator(BaseGenerator):
         """
         params["fivetran_conn_id"] = params.pop("airflow_connection_id")
         wait_for_completion = params.pop("wait_for_completion", True)
+        poke_interval = params.pop("poke_interval", 30)
         connectors_ids = set(params.pop("connections_ids"))
         generator_class = params.pop("generator")
 
@@ -167,7 +164,7 @@ class FivetranGenerator(BaseGenerator):
         for conn_id in connectors_ids:
             task_params = params.copy()
             task_name = self._get_fivetran_connector_name_for_id(conn_id)
-            task_id = task_name + "-task"
+            task_id = task_name + "-trigger"
             task_params["task_id"] = task_id
             task_params["connector_id"] = conn_id
             task = self.generate_sync_task(task_params, FivetranOperator)
@@ -177,11 +174,10 @@ class FivetranGenerator(BaseGenerator):
                 sensor_params = params.copy()
                 sensor_params["task_id"] = sensor_id
                 sensor_params["connector_id"] = conn_id
-                sensor_params["poke_interval"] = 15
+                sensor_params["poke_interval"] = poke_interval
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
                 sensor.set_upstream(task)
                 tasks[sensor.task_id] = sensor
-
         return tasks
 
     def _dbt_database_in_destination(self, fivetran_destination, dbt_database):
