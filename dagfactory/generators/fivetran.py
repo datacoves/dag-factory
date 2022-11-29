@@ -145,7 +145,9 @@ class FivetranGenerator(BaseGenerator):
         """
         return {id for id in connectors_ids if id in self.fivetran_connectors_set}
 
-    def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_tasks(
+        self, params: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Common generate_tasks for both Fivetran and Fivetran DBT generators
         - Clean params dictionary from information that Airflow can't handle
@@ -156,6 +158,7 @@ class FivetranGenerator(BaseGenerator):
         poke_interval = params.pop("poke_interval", 30)
         connectors_ids = set(params.pop("connections_ids"))
         generator_class = params.pop("generator")
+        task_group = config.get("task_group")
 
         if "FivetranGenerator" in generator_class:
             connectors_ids = self.remove_inexistant_connector_ids(connectors_ids)
@@ -180,7 +183,7 @@ class FivetranGenerator(BaseGenerator):
                 sensor_params["poke_interval"] = poke_interval
                 sensor_params["xcom"] = (
                     "{{ task_instance.xcom_pull('"
-                    + trigger_id
+                    + (f"{task_group}.{trigger_id}" if task_group else trigger_id)
                     + "', key='return_value') }}"
                 )
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
@@ -237,6 +240,8 @@ class FivetranGenerator(BaseGenerator):
 
 
 class FivetranDbtGenerator(FivetranGenerator, BaseGenerator):
-    def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_tasks(
+        self, params: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         params["connections_ids"] = self.get_pipeline_connection_list(params)
-        return super().generate_tasks(params)
+        return super().generate_tasks(params, config)

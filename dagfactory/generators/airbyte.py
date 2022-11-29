@@ -87,7 +87,9 @@ class AirbyteGenerator(BaseGenerator):
             in [connection["connectionId"] for connection in self.airbyte_connections]
         }
 
-    def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_tasks(
+        self, params: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         AirbyteGenerator entry-point from both `dagbuilder`
             Clean params dictionary from information that Airflow can't handle
@@ -194,7 +196,9 @@ class AirbyteGenerator(BaseGenerator):
 
 
 class AirbyteDbtGenerator(AirbyteGenerator):
-    def generate_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_tasks(
+        self, params: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         DAG_GENERATION_TIMEOUT = 300  # 5 minutes
         params["connections_ids"] = self.get_pipeline_connection_list(params)
-        return super().generate_tasks(params)
+        return super().generate_tasks(params, config)
