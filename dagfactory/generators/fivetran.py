@@ -4,6 +4,7 @@ from typing import Any, Dict, Set
 from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
 from fivetran_provider.operators.fivetran import FivetranOperator
+from fivetran_provider.sensors.fivetran import FivetranSensor
 from slugify import slugify
 
 from .base import BaseGenerator
@@ -135,10 +136,7 @@ class FivetranGenerator(BaseGenerator):
         """
         Create a name for Fivetran tasks based on a Connector ID
         """
-        for dest_dict in self.fivetran_data.values():
-            for conn_key in dest_dict.get("connectors", {}).keys():
-                if conn_key == connector_id:
-                    return slugify(f"Fivetran Connector {conn_key}")
+        return slugify(f"Fivetran Connector {connector_id}")
 
     def remove_inexistant_connector_ids(self, connectors_ids: Set[str]) -> Set[str]:
         """
@@ -154,6 +152,8 @@ class FivetranGenerator(BaseGenerator):
         - Fill and return the tasks dictionary
         """
         params["fivetran_conn_id"] = params.pop("airflow_connection_id")
+        wait_for_completion = params.pop("wait_for_completion", True)
+        poke_interval = params.pop("poke_interval", 30)
         connectors_ids = set(params.pop("connections_ids"))
         generator_class = params.pop("generator")
 
@@ -162,10 +162,22 @@ class FivetranGenerator(BaseGenerator):
 
         tasks: Dict[str, BaseOperator] = {}
         for conn_id in connectors_ids:
-            task_id = self._get_fivetran_connector_name_for_id(conn_id)
-            params["task_id"] = task_id
-            params["connector_id"] = conn_id
-            tasks[task_id] = self.generate_sync_task(params, FivetranOperator)
+            task_params = params.copy()
+            task_name = self._get_fivetran_connector_name_for_id(conn_id)
+            task_id = task_name + "-trigger"
+            task_params["task_id"] = task_id
+            task_params["connector_id"] = conn_id
+            task = self.generate_sync_task(task_params, FivetranOperator)
+            tasks[task.task_id] = task
+            if wait_for_completion:
+                sensor_id = task_name + "-sensor"
+                sensor_params = params.copy()
+                sensor_params["task_id"] = sensor_id
+                sensor_params["connector_id"] = conn_id
+                sensor_params["poke_interval"] = poke_interval
+                sensor = self.generate_sync_task(sensor_params, FivetranSensor)
+                sensor.set_upstream(task)
+                tasks[sensor.task_id] = sensor
         return tasks
 
     def _dbt_database_in_destination(self, fivetran_destination, dbt_database):
