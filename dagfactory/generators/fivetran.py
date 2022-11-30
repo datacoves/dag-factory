@@ -183,7 +183,11 @@ class FivetranGenerator(BaseGenerator):
                 sensor_params["poke_interval"] = poke_interval
                 sensor_params["xcom"] = (
                     "{{ task_instance.xcom_pull('"
-                    + (f"{task_group}.{trigger_id}" if task_group else trigger_id)
+                    + (
+                        f"{task_group.group_id}.{trigger_id}"
+                        if task_group
+                        else trigger_id
+                    )
                     + "', key='return_value') }}"
                 )
                 sensor = self.generate_sync_task(sensor_params, FivetranSensor)
