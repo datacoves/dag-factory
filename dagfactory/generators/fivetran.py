@@ -15,6 +15,7 @@ API_ENDPOINTS = {
     "GROUP_DETAIL": FIVETRAN_API_BASE_URL + "/destinations/{group}",
     "CONNECTOR_GROUP_LIST": FIVETRAN_API_BASE_URL + "/groups/{group}/connectors",
     "CONNECTOR_SCHEMAS": FIVETRAN_API_BASE_URL + "/connectors/{connector}/schemas",
+    "CONNECTOR_DETAILS": FIVETRAN_API_BASE_URL + "/connectors/{connector}",
 }
 
 TEST_MODE = bool(environ.get("TEST_MODE"))
@@ -32,6 +33,7 @@ class FivetranGenerator(BaseGenerator):
         if TEST_MODE:
             self.fivetran_data = {}
             self.fivetran_connectors_set = set()
+            self.fivetran_groups = {}
             self.connectors_should_exist = False
         else:
             try:
@@ -47,6 +49,7 @@ class FivetranGenerator(BaseGenerator):
             (
                 self.fivetran_connectors_set,
                 self.fivetran_data,
+                self.fivetran_groups,
             ) = self._populate_fivetran_data()
             self.connectors_should_exist = True
 
@@ -83,12 +86,14 @@ class FivetranGenerator(BaseGenerator):
         """
         fivetran_connectors = set()
         fivetran_data = {}
+        fivetran_group_name_mapping = {}
         fivetran_groups = self._fivetran_api_call(
             "GET", API_ENDPOINTS.get("GROUP_LIST")
         )
         for group in fivetran_groups.get("data", {}).get("items", []):
             group_data = {}
             group_id = group["id"]
+            fivetran_group_name_mapping[group_id] = group["name"]
             group_details = self._get_group_details(group_id)
             if group_details:
                 group_data["details"] = group_details
@@ -96,7 +101,7 @@ class FivetranGenerator(BaseGenerator):
                     fivetran_connectors, group_id
                 )
             fivetran_data[group_id] = group_data
-        return fivetran_connectors, fivetran_data
+        return fivetran_connectors, fivetran_data, fivetran_group_name_mapping
 
     def _get_group_details(self, group_id) -> Dict[Any, Any]:
         """
@@ -106,6 +111,15 @@ class FivetranGenerator(BaseGenerator):
             "GET", API_ENDPOINTS["GROUP_DETAIL"].format(group=group_id)
         )
         return group_details.get("data")
+
+    def _get_connector_details(self, connector_id):
+        """
+        Get Connector schemas from Fivetran API
+        """
+        connector_details = self._fivetran_api_call(
+            "GET", API_ENDPOINTS["CONNECTOR_DETAILS"].format(connector=connector_id)
+        )
+        return connector_details.get("data", {})
 
     def _get_connector_schemas(self, connector_id):
         """
@@ -127,16 +141,26 @@ class FivetranGenerator(BaseGenerator):
         )
         connector_data = {}
         for connector in group_connectors.get("data", {}).get("items", []):
+            connector_dict = {}
             connector_id = connector["id"]
             fivetran_connectors.add(connector_id)
-            connector_data[connector_id] = self._get_connector_schemas(connector_id)
+            connector_dict["details"] = self._get_connector_details(connector_id)
+            connector_dict["schemas"] = self._get_connector_schemas(connector_id)
+            connector_data[connector_id] = connector_dict
+
         return connector_data
 
     def _get_fivetran_connector_name_for_id(self, connector_id):
         """
         Create a name for Fivetran tasks based on a Connector ID
         """
-        return slugify(f"Fivetran Connector {connector_id}")
+        for dest_data in self.fivetran_data.values():
+            for connector_data in dest_data.get("connectors", {}).values():
+                details = connector_data["details"]
+                if details["id"] == connector_id:
+                    return slugify(
+                        f"{self.fivetran_groups[details['group_id']]}.{details['schema']}"
+                    )
 
     def remove_inexistant_connector_ids(self, connectors_ids: Set[str]) -> Set[str]:
         """
@@ -228,15 +252,18 @@ class FivetranGenerator(BaseGenerator):
                 # match dbt source_db to Fivetran destination database
                 if self._dbt_database_in_destination(dest_dict, source_db.lower()):
                     # find the appropiate Connector from destination connectors)
-                    for connector_id, connector_schemas in dest_dict.get(
-                        "connectors"
+                    for connector_id, connector_data in dest_dict.get(
+                        "connectors", {}
                     ).items():
-                        if self._dbt_schema_table_in_connector(
-                            connector_schemas,
-                            source_schema.lower(),
-                            source_table.lower(),
-                        ):
-                            return connector_id
+                        for schema_id, schema_data in connector_data.get(
+                            "schemas", {}
+                        ).items():
+                            if self._dbt_schema_table_in_connector(
+                                {schema_id: schema_data},
+                                source_schema.lower(),
+                                source_table.lower(),
+                            ):
+                                return connector_id
         if self.connectors_should_exist:
             raise FivetranGeneratorException(
                 f"There is no Fivetran Connector for {source_db}.{fivetran_schema_db_naming}"
