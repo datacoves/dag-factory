@@ -165,7 +165,7 @@ class AirbyteGenerator(BaseGenerator):
                     )["connectionConfiguration"]
 
                     # match database
-                    if db == destination_config["database"].lower():
+                    if db == destination_config.get("database", destination_config.get("project-id", "")).lower():
                         airbyte_schema = self._get_connection_schema(
                             conn, destination_config
                         )
