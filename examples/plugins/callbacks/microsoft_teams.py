@@ -1,7 +1,7 @@
 import os
 import urllib.parse
 
-from ms_teams_webhook_operator import MSTeamsWebhookOperator
+from ms_teams.ms_teams_webhook_operator import MSTeamsWebhookOperator
 
 AIRFLOW_URL = os.environ.get("AIRFLOW__WEBSERVER__BASE_URL")
 
@@ -27,18 +27,18 @@ def send_teams_message(context, dag_id, task_id, message, theme_color, connectio
 
 
 def inform_success(context, **kwargs):
-    connection_id = kwargs.get("connection_id")
     dag_id = context["dag_run"].dag_id
     task_id = context["task_instance"].task_id
-    message = f"`{dag_id}` has succeded on task: `{task_id}`"
-    theme_color = "00FF00"
+    connection_id = kwargs.get("connection_id")
+    message = kwargs.get("message", f"`{dag_id}` has succeded on task: `{task_id}`")
+    theme_color = kwargs.get("color", "00FF00")
     send_teams_message(context, dag_id, task_id, message, theme_color, connection_id)
 
 
 def inform_failure(context, **kwargs):
-    connection_id = kwargs.get("connection_id")
     dag_id = context["dag_run"].dag_id
     task_id = context["task_instance"].task_id
-    message = f"`{dag_id}` has failed on task: `{task_id}`"
-    theme_color = "FF0000"
+    connection_id = kwargs.get("connection_id")
+    message = kwargs.get("message", f"`{dag_id}` has failed on task: `{task_id}`")
+    theme_color = kwargs.get("color", "FF0000")
     send_teams_message(context, dag_id, task_id, message, theme_color, connection_id)

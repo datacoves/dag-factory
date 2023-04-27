@@ -43,13 +43,10 @@ RUN ~/.virtualenvs/datacoves/bin/pip install -r requirements.txt
 RUN pip install apache-airflow==${AIRFLOW_VERSION} ipdb wtforms
 RUN mkdir -p /root/airflow/dags
 
-ADD examples/plugins/ /root/airflow/plugins/
 
 ADD . /app
-ADD examples/example_basic.py /root/airflow/dags/example_basic.py
-ADD examples/example_airflow_dbt.py /root/airflow/dags/example_airflow_dbt.py
-ADD examples/example_airbyte_operator.py /root/airflow/dags/example_airbyte_operator.py
-ADD examples/fivetran_generators.py /root/airflow/dags/fivetran_generators.py
+ADD examples/dags /root/airflow/dags
+ADD examples/plugins/ /root/airflow/plugins/
 
 
 WORKDIR /app

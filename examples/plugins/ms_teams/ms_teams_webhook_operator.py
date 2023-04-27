@@ -21,7 +21,7 @@ import logging
 
 from airflow.operators.http_operator import SimpleHttpOperator
 from airflow.utils.decorators import apply_defaults
-from ms_teams_webhook_hook import MSTeamsWebhookHook
+from ms_teams.ms_teams_webhook_hook import MSTeamsWebhookHook
 
 
 class MSTeamsWebhookOperator(SimpleHttpOperator):
@@ -67,8 +67,9 @@ class MSTeamsWebhookOperator(SimpleHttpOperator):
         *args,
         **kwargs
     ):
-
-        super(MSTeamsWebhookOperator, self).__init__(endpoint=webhook_token, *args, **kwargs)
+        super(MSTeamsWebhookOperator, self).__init__(
+            endpoint=webhook_token, *args, **kwargs
+        )
         self.http_conn_id = http_conn_id
         self.webhook_token = webhook_token
         self.message = message
