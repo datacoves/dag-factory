@@ -19,7 +19,9 @@ AIRFLOW_AVAILABLE_CALLBACKS: List[str] = [
 ]
 
 
-def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") -> datetime:
+def get_datetime(
+    date_value: Union[str, datetime, date], timezone: str = "UTC"
+) -> datetime:
     """
     Takes value from DAG config and generates valid datetime. Defaults to
     today, if not a valid date or relative time (1 hours, 1 days, etc.)
@@ -38,7 +40,9 @@ def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") 
     if isinstance(date_value, datetime):
         return date_value.replace(tzinfo=local_tz)
     if isinstance(date_value, date):
-        return datetime.combine(date=date_value, time=datetime.min.time()).replace(tzinfo=local_tz)
+        return datetime.combine(date=date_value, time=datetime.min.time()).replace(
+            tzinfo=local_tz
+        )
     # Try parsing as date string
     try:
         return pendulum.parse(date_value).replace(tzinfo=local_tz)
@@ -85,7 +89,9 @@ def get_time_delta(time_string: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def merge_configs(config: Dict[str, Any], default_config: Dict[str, Any]) -> Dict[str, Any]:
+def merge_configs(
+    config: Dict[str, Any], default_config: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Merges a `default` config with DAG config. Used to set default values
     for a group of DAGs.
@@ -180,6 +186,7 @@ def set_callback_from_custom(params):
             raise Exception(
                 f"Airflow callback type {callback_type} not supported. Use {' | '.join(AIRFLOW_AVAILABLE_CALLBACKS)}"
             )
+
         callable = get_python_callable_from_module(
             callback_dict["module"],
             callback_dict["callable"],
@@ -189,8 +196,7 @@ def set_callback_from_custom(params):
         callable_kwargs = {}
         for arg in callback_args:
             if type(arg) is dict:
-                for arg_k, arg_v in arg.items():
-                    callable_kwargs.update({arg_k: arg_v})
+                callable_kwargs.update(arg)
             else:
                 callable_args.append(arg)
         params[callback_type] = partial(callable, *callable_args, **callable_kwargs)
