@@ -25,7 +25,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 REQUIRED = [
     # "apache-airflow[kubernetes]>=2.1.0",
-    "apache-airflow-providers-cncf-kubernetes==4.4.0",  # Max Airflow 2.3.1 Kubernetes provider support
+    # "apache-airflow-providers-cncf-kubernetes==4.4.0",
     "pyyaml>=6.0",
     "packaging>=20.9",
     "airflow-dbt>=0.4.0",
