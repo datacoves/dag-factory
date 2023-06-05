@@ -8,6 +8,7 @@ from typing import Any, Dict, Set
 
 import requests
 from airflow.models import BaseOperator
+from airflow.operators.bash import BashOperator
 from airflow.utils.module_loading import as_importable_string
 from slugify import slugify
 
@@ -46,7 +47,7 @@ class BaseGenerator:
     def get_bash_command(self, virtualenv_path, command):
         return shlex.split(f"/bin/bash -c 'source {virtualenv_path} && {command}'")
 
-    def generate_sync_task(
+    def generate_task(
         self, params: Dict[str, Any], operator: BaseOperator
     ) -> Dict[str, Any]:
         """
@@ -60,6 +61,19 @@ class BaseGenerator:
             task_params=params,
         )
 
+    def generate_fallback_task(
+        self, params: Dict[str, Any], provider: str, used_dbt_args: str
+    ):
+        """
+        Generate common fallback task for Airbyte and Fivetran operations
+        that didn't find a Connector to sync
+        """
+        echo_message = f"No {provider} sources found {f'using {used_dbt_args}' if used_dbt_args else ''}"
+        task_id = f"Fallback {provider} task"
+        params["task_id"] = task_id
+        params["bash_command"] = f"echo {echo_message}"
+        return self.generate_task(params, BashOperator)
+
     def is_readonly(self, folder: str) -> bool:
         """Returns True if `folder` is readonly"""
         stat = os.statvfs(folder)
@@ -70,7 +84,7 @@ class BaseGenerator:
         Discover DBT source(s)' Airbyte/Fivetran connection IDs based on params
         """
         dbt_project_path = params.pop("dbt_project_path")
-        dbt_list_args = params.pop("dbt_list_args", "")
+        dbt_list_args = params.get("dbt_list_args", "")
         run_dbt_deps = params.pop("run_dbt_deps", True)
         run_dbt_compile = params.pop("run_dbt_compile", False)
         virtualenv_path = params.pop("virtualenv_path", None)

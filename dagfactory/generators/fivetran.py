@@ -183,40 +183,47 @@ class FivetranGenerator(BaseGenerator):
         connectors_ids = set(params.pop("connections_ids"))
         generator_class = params.pop("generator")
         task_group = config.get("task_group")
+        used_dbt_args = params.pop("dbt_list_args", "")
 
         if "FivetranGenerator" in generator_class:
             connectors_ids = self.remove_inexistant_connector_ids(connectors_ids)
 
         tasks: Dict[str, BaseOperator] = {}
-        for conn_id in connectors_ids:
-            task_name = self._get_fivetran_connector_name_for_id(conn_id)
+        if connectors_ids:
+            for conn_id in connectors_ids:
+                task_name = self._get_fivetran_connector_name_for_id(conn_id)
 
-            # Trigger task
-            trigger_params = params.copy()
-            trigger_id = task_name + "-trigger"
-            trigger_params["task_id"] = trigger_id
-            trigger_params["connector_id"] = conn_id
-            trigger_params["do_xcom_push"] = True
-            trigger = self.generate_sync_task(trigger_params, FivetranOperator)
-            tasks[trigger.task_id] = trigger
-            if wait_for_completion:
-                # Sensor task - senses Fivetran connectors status
-                sensor_params = params.copy()
-                sensor_params["task_id"] = task_name + "-sensor"
-                sensor_params["connector_id"] = conn_id
-                sensor_params["poke_interval"] = poke_interval
-                sensor_params["xcom"] = (
-                    "{{ task_instance.xcom_pull('"
-                    + (
-                        f"{task_group.group_id}.{trigger_id}"
-                        if task_group
-                        else trigger_id
+                # Trigger task
+                trigger_params = params.copy()
+                trigger_id = task_name + "-trigger"
+                trigger_params["task_id"] = trigger_id
+                trigger_params["connector_id"] = conn_id
+                trigger_params["do_xcom_push"] = True
+                trigger = self.generate_task(trigger_params, FivetranOperator)
+                tasks[trigger.task_id] = trigger
+                if wait_for_completion:
+                    # Sensor task - senses Fivetran connectors status
+                    sensor_params = params.copy()
+                    sensor_params["task_id"] = task_name + "-sensor"
+                    sensor_params["connector_id"] = conn_id
+                    sensor_params["poke_interval"] = poke_interval
+                    sensor_params["xcom"] = (
+                        "{{ task_instance.xcom_pull('"
+                        + (
+                            f"{task_group.group_id}.{trigger_id}"
+                            if task_group
+                            else trigger_id
+                        )
+                        + "', key='return_value') }}"
                     )
-                    + "', key='return_value') }}"
-                )
-                sensor = self.generate_sync_task(sensor_params, FivetranSensor)
-                sensor.set_upstream(trigger)
-                tasks[sensor.task_id] = sensor
+                    sensor = self.generate_task(sensor_params, FivetranSensor)
+                    sensor.set_upstream(trigger)
+                    tasks[sensor.task_id] = sensor
+        else:
+            fallback_task = self.generate_fallback_task(
+                params, "Fivetran", used_dbt_args
+            )
+            tasks[fallback_task.task_id] = fallback_task
         return tasks
 
     def _dbt_database_in_destination(self, fivetran_destination, dbt_database):
