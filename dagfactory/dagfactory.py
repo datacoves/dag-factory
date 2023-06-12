@@ -109,9 +109,6 @@ class DagFactory:
 
         return dags
 
-    def build_fallback_dag(self) -> Dict[str, Union[str, DAG]]:
-        pass
-
     # pylint: disable=redefined-builtin
     @staticmethod
     def register_dags(dags: Dict[str, DAG], globals: Dict[str, Any]) -> None:
