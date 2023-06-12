@@ -331,6 +331,18 @@ class DagBuilder:
                     ] = tasks_and_task_groups_instances[dep]
                     source.set_upstream(dep)
 
+    def build_fallback_dag(self, error: Exception) -> Dict[str, Union[str, DAG]]:
+        """
+        Build a rudimentary DAG without tasks
+        to inform errors without breaking the flow of dag-factory
+        """
+        dag_id = f"ERROR_{self.dag_name}"
+        dag: DAG = DAG(
+            dag_id=dag_id, start_date=datetime(2030, 1, 1), doc_md=str(error)
+        )
+
+        return {"dag_id": dag_id, "dag": dag}
+
     def build(self) -> Dict[str, Union[str, DAG]]:
         """
         Generates a DAG from the DAG parameters.

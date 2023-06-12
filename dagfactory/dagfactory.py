@@ -1,6 +1,7 @@
 """Module contains code for loading a DagFactory config and generating DAGs"""
 import os
-from typing import Any, Dict, Optional, Union, List
+import traceback
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from airflow.models import DAG
@@ -98,12 +99,18 @@ class DagFactory:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
                 if dag:
                     dags[dag["dag_id"]]: DAG = dag["dag"]
-            except Exception as err:
-                raise Exception(
-                    f"Failed to generate dag {dag_name}. verify config is correct"
-                ) from err
+            except Exception:
+                complete_traceback = traceback.format_exc()
+
+                dag: Dict[str, Union[str, DAG]] = dag_builder.build_fallback_dag(
+                    complete_traceback
+                )
+                dags[dag["dag_id"]]: DAG = dag["dag"]
 
         return dags
+
+    def build_fallback_dag(self) -> Dict[str, Union[str, DAG]]:
+        pass
 
     # pylint: disable=redefined-builtin
     @staticmethod
