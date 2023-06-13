@@ -97,17 +97,24 @@ class AirbyteGenerator(BaseGenerator):
         """
         params["airbyte_conn_id"] = params.pop("airflow_connection_id")
         connections_ids = set(params.pop("connections_ids"))
+        used_dbt_args = params.pop("dbt_list_args", "")
 
         generator_class = params.pop("generator")
         if "AirbyteGenerator" in generator_class:
             connections_ids = self.remove_inexistant_conn_ids(connections_ids)
 
         tasks: Dict[str, BaseOperator] = dict()
-        for conn_id in connections_ids:
-            task_id = self._create_airbyte_connection_name_for_id(conn_id)
-            params["task_id"] = task_id
-            params["connection_id"] = conn_id
-            tasks[task_id] = self.generate_sync_task(params, AirbyteTriggerSyncOperator)
+        if connections_ids:
+            for conn_id in connections_ids:
+                task_id = self._create_airbyte_connection_name_for_id(conn_id)
+                params["task_id"] = task_id
+                params["connection_id"] = conn_id
+                tasks[task_id] = self.generate_task(params, AirbyteTriggerSyncOperator)
+        else:
+            fallback_task = self.generate_fallback_task(
+                params, "Fivetran", used_dbt_args
+            )
+            tasks[fallback_task.task_id] = fallback_task
 
         return tasks
 
@@ -165,7 +172,12 @@ class AirbyteGenerator(BaseGenerator):
                     )["connectionConfiguration"]
 
                     # match database
-                    if db == destination_config.get("database", destination_config.get("project-id", "")).lower():
+                    if (
+                        db
+                        == destination_config.get(
+                            "database", destination_config.get("project-id", "")
+                        ).lower()
+                    ):
                         airbyte_schema = self._get_connection_schema(
                             conn, destination_config
                         )
@@ -199,6 +211,5 @@ class AirbyteDbtGenerator(AirbyteGenerator):
     def generate_tasks(
         self, params: Dict[str, Any], config: Dict[str, Any]
     ) -> Dict[str, Any]:
-        DAG_GENERATION_TIMEOUT = 300  # 5 minutes
         params["connections_ids"] = self.get_pipeline_connection_list(params)
         return super().generate_tasks(params, config)
