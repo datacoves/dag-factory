@@ -96,15 +96,13 @@ class DagFactory:
                 default_config=default_config,
             )
             try:
-                dag: Dict[str, Union[str, DAG]] = dag_builder.build()
+                dag: Dict[str, DAG] = dag_builder.build()
                 if dag:
                     dags[dag["dag_id"]]: DAG = dag["dag"]
             except Exception:
                 complete_traceback = traceback.format_exc()
 
-                dag: Dict[str, Union[str, DAG]] = dag_builder.build_fallback_dag(
-                    complete_traceback
-                )
+                dag: Dict[str, DAG] = dag_builder.build_fallback_dag(complete_traceback)
                 dags[dag["dag_id"]]: DAG = dag["dag"]
 
         return dags
