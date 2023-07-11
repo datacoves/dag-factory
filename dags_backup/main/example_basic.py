@@ -2,7 +2,7 @@ from airflow.models.dag import DAG
 
 from dagfactory import dagfactory
 
-config_file = "/app/examples/dags/example_basic.yml"
+config_file = "/app/examples/example_basic.yml"
 example_dag_factory = dagfactory.DagFactory(config_file)
 
 # Creating task dependencies

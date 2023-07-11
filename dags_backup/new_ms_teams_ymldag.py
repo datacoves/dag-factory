@@ -2,7 +2,7 @@ from airflow import DAG
 
 import dagfactory
 
-config_file = "/app/examples/dags/new_ms_teams_ymldag.yml"
+config_file = "/root/airflow/dags/new_ms_teams_ymldag.yml"
 example_dag_factory = dagfactory.DagFactory(config_file)
 
 # Creating task dependencies
