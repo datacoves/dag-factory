@@ -34,8 +34,7 @@ REQUIRED = [
     "apache-airflow-providers-http>=2.0.1",
     "apache-airflow-providers-airbyte>=2.1.1",
     "airflow-provider-fivetran==1.1.2",
-    "apache-airflow-providers-slack",
-    "apache-airflow-providers-slack[http]",
+    "apache-airflow-providers-slack==7.2.0",
 ]
 DEV_REQUIRED = ["black", "pytest", "pylint", "pytest-cov", "tox"]
 
