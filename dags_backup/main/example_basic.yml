@@ -23,7 +23,7 @@ example_dag2:
     #     - d4205a14-af8e-4323-95ea-1603e28264af
     #   task_group_name: extract_and_load
     airbyte_dbt_generator:
-      generator: dagfactory.ThisGeneratorDoesntExist
+      generator: dagfactory.AirbyteDbtGenerator
       airflow_connection_id: airbyte_connection
       dbt_project_path: /app/transform
       deploy_path: /tmp/load
@@ -32,37 +32,7 @@ example_dag2:
       # Update tag for job
       run_dbt_compile: false
       run_dbt_deps: false
-      dbt_list_args: "--select tag:this_doesnt_exist"
-    # transform:
-    #   operator: airflow.operators.bash_operator.BashOperator
-    #   bash_command: source /root/.virtualenvs/datacoves/bin/activate && dbt-coves dbt --project-dir /app/transform -- build
-example_dag3:
-  default_args:
-    start_date: 2 days
-  custom_callbacks:
-    on_success_callback:
-      module: callbacks.slack_messages
-      callable: inform_success
-      args:
-        - connection_id: slack_connection
-    on_failure_callback:
-      module: callbacks.slack_messages
-      callable: inform_failure
-      args:
-        - connection_id: slack_connection
-  task_groups:
-    extract_and_load:
-      tooltip: "Extract and Load taskgroup"
-  tasks:
-    # airbyte_generator:
-    #   generator: dagfactory.AirbyteGenerator
-    #   airflow_connection_id: airbyte_connection
-    #   connections_ids:
-    #     - d4205a14-af8e-4323-95ea-1603e28264af
-    #   task_group_name: extract_and_load
-    airbyte_dbt_generator:
-      operator: airflow.operators.bash_operator.BashOperator
-      bash_command: "echo 1"
+      dbt_list_args: "--select tag:loan_daily"
     # transform:
     #   operator: airflow.operators.bash_operator.BashOperator
     #   bash_command: source /root/.virtualenvs/datacoves/bin/activate && dbt-coves dbt --project-dir /app/transform -- build

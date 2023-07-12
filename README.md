@@ -87,6 +87,8 @@ Contributions are welcome! Just submit a Pull Request or Github Issue.
 docker build -t dag-factory .
 
 docker run -d -p "8080:8080" -v "$(pwd):/app" -v "$(pwd)/examples/dags:/root/airflow/dags" -v "$(pwd)/examples/plugins:/root/airflow/plugins" dag-factory
+
+--network="airbyte_airbyte_internal"
 ```
 
 Navigate to https://localhost:8080 and login using credentials admin/admin.
