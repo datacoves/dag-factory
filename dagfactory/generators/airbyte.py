@@ -161,7 +161,11 @@ class AirbyteGenerator(BaseGenerator):
         """
 
         airbyte_tables = []
-        for conn in self.airbyte_connections:
+        for conn in list(
+            filter(
+                lambda conn: conn.get("status") == "active", self.airbyte_connections
+            )
+        ):
             for stream in conn["syncCatalog"]["streams"]:
                 # look for the table
                 airbyte_table = stream["stream"]["name"].lower()
