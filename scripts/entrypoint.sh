@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
-airflow db init
+airflow db migrate
 # for airflow 2.0
 airflow users create --username admin \
     --firstname test \
